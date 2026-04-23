@@ -1,0 +1,2681 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>النموذج التشغيلي المتكامل | مستودعات كارفور</title>
+
+    <!-- Preconnect for font performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Typography: Cairo (Arabic), Oswald (Headings), Roboto Mono (Technical) — font-display: swap for performance -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Oswald:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+        /* ============================================================
+           CSS CUSTOM PROPERTIES (Design Tokens)
+           ============================================================ */
+        :root {
+            --bg-deep: #08080d;
+            --bg-panel: #0f0f18;
+            --bg-surface: #14141f;
+            --bg-elevated: #1a1a2a;
+            --orange-aggressive: #FF4500;
+            --orange-glow: #ff5e1a;
+            --yellow-hazard: #FFD700;
+            --yellow-bright: #ffe44d;
+            --red-industrial: #8B0000;
+            --red-alert: #b80000;
+            --text-primary: #e8e8f0;
+            --text-secondary: #c0c0cc;
+            --text-muted: #8a8a9a;
+            --border-thick: #FF4500;
+            --border-panel: #2a2a3a;
+            --border-subtle: #1e1e30;
+            --mesh-color: rgba(255, 69, 0, 0.025);
+            --gauge-green: #00e676;
+            --gauge-yellow: #FFD700;
+            --gauge-orange: #FF4500;
+            --gauge-red: #8B0000;
+
+            /* Consistent typographic scale */
+            --fs-xs: 0.7rem;
+            --fs-sm: 0.8rem;
+            --fs-base: 0.9rem;
+            --fs-md: 1rem;
+            --fs-lg: 1.15rem;
+            --fs-xl: 1.5rem;
+            --fs-2xl: 1.9rem;
+            --fs-3xl: 2.4rem;
+        }
+
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            line-height: 1.9;
+            padding: 12px 12px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            background-image:
+                repeating-linear-gradient(0deg,
+                    var(--mesh-color) 0px,
+                    var(--mesh-color) 1px,
+                    transparent 1px,
+                    transparent 3px),
+                repeating-linear-gradient(90deg,
+                    var(--mesh-color) 0px,
+                    var(--mesh-color) 1px,
+                    transparent 1px,
+                    transparent 3px),
+                radial-gradient(ellipse at 25% 15%, rgba(255, 69, 0, 0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 75% 70%, rgba(255, 215, 0, 0.03) 0%, transparent 55%);
+            background-size: 4px 4px, 4px 4px, 100% 100%, 100% 100%;
+            background-attachment: scroll;
+        }
+
+        /* ---- Focus-visible styles for keyboard navigation ---- */
+        :focus-visible {
+            outline: 3px solid var(--orange-aggressive);
+            outline-offset: 3px;
+            border-radius: 2px;
+        }
+
+        a:focus-visible,
+        button:focus-visible {
+            outline: 3px solid var(--yellow-hazard);
+            outline-offset: 4px;
+        }
+
+        /* ---- Utility Classes ---- */
+        .panel {
+            background: var(--bg-elevated);
+            border: 2px solid var(--border-panel);
+            padding: 1.6rem 2rem;
+            margin: 2rem 0;
+            color: var(--text-primary);
+            line-height: 1.9;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+            position: relative;
+            page-break-inside: avoid;
+        }
+
+        .accent-inline-start {
+            border-inline-start: 5px solid var(--orange-aggressive);
+            position: relative;
+        }
+
+        .accent-inline-start::after {
+            content: '';
+            position: absolute;
+            top: -1px;
+            inset-inline-start: -5px;
+            bottom: -1px;
+            width: 5px;
+            background: var(--orange-aggressive);
+            box-shadow: 0 0 15px rgba(255, 69, 0, 0.5);
+        }
+
+        .section-block {
+            margin: 2rem 0;
+            page-break-inside: avoid;
+        }
+
+        /* ---- Mixed-language handling ---- */
+        p,
+        table,
+        .content-container,
+        .box,
+        .panel,
+        td,
+        th,
+        li {
+            unicode-bidi: plaintext;
+        }
+
+        /* ============================================================
+           MAIN CONTAINER
+           ============================================================ */
+        .main-container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            background: var(--bg-panel);
+            border: 3px solid var(--border-thick);
+            box-shadow:
+                0 0 40px rgba(255, 69, 0, 0.18),
+                0 0 80px rgba(255, 69, 0, 0.06),
+                0 8px 60px rgba(0, 0, 0, 0.7),
+                inset 0 1px 0 rgba(255, 255, 255, 0.02);
+            position: relative;
+        }
+
+        .main-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            inset-inline-start: 0;
+            inset-inline-end: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            background:
+                repeating-linear-gradient(0deg,
+                    rgba(255, 69, 0, 0.015) 0px,
+                    rgba(255, 69, 0, 0.015) 1px,
+                    transparent 1px,
+                    transparent 6px),
+                repeating-linear-gradient(90deg,
+                    rgba(255, 215, 0, 0.01) 0px,
+                    rgba(255, 215, 0, 0.01) 1px,
+                    transparent 1px,
+                    transparent 6px);
+            background-size: 6px 6px, 6px 6px;
+            opacity: 0.7;
+        }
+
+        .main-container>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================================
+           HEADER
+           ============================================================ */
+        .header {
+            background: linear-gradient(180deg, #0c0c1a 0%, #0a0a16 40%, #0d0d1c 100%);
+            color: var(--text-primary);
+            padding: 2rem 2.5rem;
+            border-bottom: 4px solid var(--orange-aggressive);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            inset-inline-start: 0;
+            inset-inline-end: 0;
+            height: 3px;
+            background: repeating-linear-gradient(90deg,
+                    var(--orange-aggressive) 0px,
+                    var(--orange-aggressive) 8px,
+                    transparent 8px,
+                    transparent 16px,
+                    var(--yellow-hazard) 16px,
+                    var(--yellow-hazard) 24px,
+                    transparent 24px,
+                    transparent 32px);
+            z-index: 2;
+            animation: scanline 3s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% {
+                background-position: 0 0;
+            }
+            100% {
+                background-position: 64px 0;
+            }
+        }
+
+        .header .system-badge {
+            display: inline-block;
+            background: #0a0a0f;
+            border: 2px solid var(--orange-aggressive);
+            color: var(--orange-aggressive);
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            font-size: var(--fs-sm);
+            letter-spacing: 3px;
+            padding: 6px 18px;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            animation: pulse-badge 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-badge {
+            0%,
+            100% {
+                box-shadow: 0 0 8px rgba(255, 69, 0, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 22px rgba(255, 69, 0, 0.7), 0 0 40px rgba(255, 69, 0, 0.3);
+            }
+        }
+
+        .header .system-badge .blink-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: var(--orange-aggressive);
+            border-radius: 50%;
+            margin-inline-end: 8px;
+            animation: blink-dot 1s step-end infinite;
+            vertical-align: middle;
+            box-shadow: 0 0 10px var(--orange-aggressive);
+        }
+
+        @keyframes blink-dot {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.15;
+            }
+        }
+
+        .header h1 {
+            font-family: 'Oswald', 'Cairo', sans-serif;
+            font-size: var(--fs-3xl);
+            font-weight: 700;
+            line-height: 1.4;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #ffffff;
+            text-shadow: 0 0 30px rgba(255, 69, 0, 0.4);
+        }
+
+        .header h1 i {
+            color: var(--orange-aggressive);
+            font-size: 2.6rem;
+            filter: drop-shadow(0 0 12px rgba(255, 69, 0, 0.7));
+        }
+
+        .meta {
+            margin-top: 18px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 2px solid rgba(255, 69, 0, 0.3);
+            padding-top: 18px;
+            gap: 14px;
+            font-size: var(--fs-base);
+            font-family: 'Roboto Mono', 'Cairo', monospace;
+            color: var(--text-secondary);
+        }
+
+        .badge {
+            background: rgba(255, 69, 0, 0.12);
+            padding: 5px 20px;
+            font-weight: 600;
+            border: 2px solid var(--orange-aggressive);
+            color: var(--orange-glow);
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-size: var(--fs-sm);
+        }
+
+        .header .sub-meta {
+            margin-top: 14px;
+            background: rgba(255, 215, 0, 0.04);
+            padding: 10px 20px;
+            font-weight: 500;
+            display: inline-block;
+            color: var(--yellow-hazard);
+            border: 1px solid rgba(255, 215, 0, 0.25);
+            font-family: 'Roboto Mono', 'Cairo', monospace;
+            font-size: var(--fs-sm);
+            letter-spacing: 0.5px;
+        }
+
+        /* ---- Document metadata bar ---- */
+        .doc-meta-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 12px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: var(--fs-xs);
+            color: var(--text-muted);
+            align-items: center;
+        }
+
+        .doc-meta-bar span {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 4px 12px;
+            border: 1px solid var(--border-subtle);
+            letter-spacing: 0.4px;
+        }
+
+        .doc-meta-bar .version-pill {
+            background: rgba(0, 230, 118, 0.1);
+            border-color: rgba(0, 230, 118, 0.3);
+            color: var(--gauge-green);
+            font-weight: 600;
+        }
+
+        /* ---- Download PDF button ---- */
+        .pdf-download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--orange-aggressive);
+            color: #000;
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            text-decoration: none;
+            padding: 10px 22px;
+            border: none;
+            cursor: pointer;
+            font-size: var(--fs-sm);
+            transition: all 0.2s;
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.35);
+            margin-inline-start: auto;
+        }
+
+        .pdf-download-btn:hover {
+            background: var(--yellow-hazard);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            transform: translateY(-2px);
+            color: #000;
+        }
+
+        /* ============================================================
+           NAVIGATION (Semantic <nav>)
+           ============================================================ */
+        nav.sticky-nav {
+            background: var(--bg-elevated);
+            padding: 0.75rem 1.8rem;
+            border-bottom: 2px solid var(--border-panel);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px 22px;
+            backdrop-filter: blur(12px);
+            background: rgba(20, 20, 35, 0.95);
+            border-bottom: 2px solid rgba(255, 69, 0, 0.35);
+            aria-label: "فهرس التنقل الرئيسي";
+        }
+
+        nav.sticky-nav .nav-title {
+            font-weight: 800;
+            color: var(--orange-aggressive);
+            font-size: var(--fs-md);
+            letter-spacing: 2px;
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            text-transform: uppercase;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+            aria-label: "روابط الأبواب";
+        }
+
+        .nav-links a {
+            background: var(--bg-surface);
+            padding: 6px 16px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: var(--fs-sm);
+            border: 1px solid var(--border-subtle);
+            font-family: 'Roboto Mono', 'Cairo', monospace;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .nav-links a:hover {
+            background: var(--orange-aggressive);
+            color: #000;
+            border-color: var(--orange-aggressive);
+            box-shadow: 0 0 18px rgba(255, 69, 0, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .nav-links a:focus-visible {
+            outline: 3px solid var(--yellow-hazard);
+            outline-offset: 4px;
+            background: var(--orange-aggressive);
+            color: #000;
+        }
+
+        /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+        .content {
+            padding: 2.5rem 2.5rem;
+            background: transparent;
+        }
+
+        .chapter {
+            margin-bottom: 4rem;
+            scroll-margin-top: 120px;
+            page-break-inside: avoid;
+            border: 2px solid var(--border-panel);
+            background: var(--bg-surface);
+            padding: 2rem 2.2rem;
+            position: relative;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Only apply page-break-before from the second chapter onward */
+        .chapter~.chapter {
+            page-break-before: always;
+        }
+
+        .chapter::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            inset-inline-end: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--orange-aggressive) 0%, var(--red-industrial) 100%);
+        }
+
+        .chapter-head {
+            display: flex;
+            align-items: center;
+            border-bottom: 3px solid var(--orange-aggressive);
+            margin-bottom: 2rem;
+            padding-bottom: 0.7rem;
+            gap: 16px;
+        }
+
+        .chapter-head h2 {
+            font-family: 'Oswald', 'Cairo', sans-serif;
+            font-size: var(--fs-2xl);
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.4;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(255, 69, 0, 0.3);
+        }
+
+        .chapter-num {
+            background: var(--orange-aggressive);
+            color: #000;
+            padding: 4px 20px;
+            font-weight: 800;
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
+        }
+
+        h3 {
+            font-family: 'Oswald', 'Cairo', sans-serif;
+            font-size: var(--fs-xl);
+            font-weight: 700;
+            color: var(--yellow-hazard);
+            margin: 2rem 0 1rem 0;
+            border-inline-start: 5px solid var(--orange-aggressive);
+            padding-inline-start: 20px;
+            line-height: 1.5;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.25);
+        }
+
+        h4 {
+            font-family: 'Oswald', 'Cairo', sans-serif;
+            font-size: var(--fs-lg);
+            font-weight: 700;
+            color: var(--orange-glow);
+            margin: 1.8rem 0 0.8rem 0;
+            padding-inline-start: 8px;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+
+        p {
+            margin-bottom: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        strong {
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        /* ---- Box (with accent-inline-start utility) ---- */
+        .box {
+            background: var(--bg-elevated);
+            border: 2px solid var(--border-panel);
+            border-inline-start: 5px solid var(--orange-aggressive);
+            padding: 1.6rem 2rem;
+            margin: 2rem 0;
+            color: var(--text-primary);
+            line-height: 1.9;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+            position: relative;
+            page-break-inside: avoid;
+        }
+
+        .box::after {
+            content: '';
+            position: absolute;
+            top: -1px;
+            inset-inline-start: -5px;
+            bottom: -1px;
+            width: 5px;
+            background: var(--orange-aggressive);
+            box-shadow: 0 0 15px rgba(255, 69, 0, 0.5);
+        }
+
+        .box strong {
+            color: var(--yellow-hazard);
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            letter-spacing: 1px;
+        }
+
+        ul,
+        ol {
+            padding-inline-start: 2rem;
+            margin: 1.2rem 0;
+            color: var(--text-secondary);
+        }
+
+        li {
+            margin-bottom: 0.6rem;
+        }
+
+        /* ============================================================
+           GAUGE DASHBOARD
+           ============================================================ */
+        .gauge-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin: 2rem 0;
+            page-break-inside: avoid;
+        }
+
+        .gauge-card {
+            background: var(--bg-elevated);
+            border: 2px solid var(--border-panel);
+            padding: 1.2rem 1rem;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            page-break-inside: avoid;
+        }
+
+        .gauge-card .gauge-ring {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 6px solid var(--border-subtle);
+        }
+
+        .gauge-card .gauge-ring .gauge-value {
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 1px;
+        }
+
+        .gauge-card .gauge-label {
+            font-family: 'Roboto Mono', 'Cairo', monospace;
+            font-size: var(--fs-xs);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-top: 4px;
+        }
+
+        .gauge-card.critical .gauge-ring {
+            border-color: var(--red-industrial);
+            box-shadow: 0 0 20px rgba(139, 0, 0, 0.6), inset 0 0 15px rgba(139, 0, 0, 0.2);
+        }
+        .gauge-card.critical .gauge-value {
+            color: #ff3333;
+        }
+
+        .gauge-card.warning .gauge-ring {
+            border-color: var(--orange-aggressive);
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.5), inset 0 0 15px rgba(255, 69, 0, 0.15);
+        }
+        .gauge-card.warning .gauge-value {
+            color: var(--orange-aggressive);
+        }
+
+        .gauge-card.nominal .gauge-ring {
+            border-color: var(--yellow-hazard);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4), inset 0 0 15px rgba(255, 215, 0, 0.1);
+        }
+        .gauge-card.nominal .gauge-value {
+            color: var(--yellow-hazard);
+        }
+
+        .gauge-card.optimal .gauge-ring {
+            border-color: #00e676;
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.4), inset 0 0 15px rgba(0, 230, 118, 0.1);
+        }
+        .gauge-card.optimal .gauge-value {
+            color: #00e676;
+        }
+
+        /* ============================================================
+           TIMELINE FLOW
+           ============================================================ */
+        .timeline-flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0;
+            margin: 2rem 0;
+            page-break-inside: avoid;
+            border: 2px solid var(--border-panel);
+            background: var(--bg-elevated);
+            padding: 0;
+            overflow-x: auto;
+        }
+
+        .timeline-step {
+            flex: 1;
+            min-width: 130px;
+            padding: 1rem 0.8rem;
+            text-align: center;
+            position: relative;
+            border-inline-end: 1px solid var(--border-subtle);
+            background: var(--bg-surface);
+            page-break-inside: avoid;
+        }
+
+        .timeline-step:last-child {
+            border-inline-end: none;
+        }
+
+        .timeline-step .step-icon {
+            font-size: 1.8rem;
+            color: var(--orange-aggressive);
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .timeline-step .step-num {
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--yellow-hazard);
+            letter-spacing: 1px;
+        }
+
+        .timeline-step .step-label {
+            font-family: 'Roboto Mono', 'Cairo', monospace;
+            font-size: var(--fs-xs);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-top: 2px;
+        }
+
+        .timeline-step.active {
+            background: rgba(255, 69, 0, 0.1);
+            border-bottom: 3px solid var(--orange-aggressive);
+        }
+
+        /* ============================================================
+           TABLES
+           ============================================================ */
+        /* Wide tables: horizontal scroll wrapper */
+        .table-scroll-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 2rem 0;
+        }
+
+        table.heatmap {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            font-size: var(--fs-sm);
+            border: 2px solid var(--border-panel);
+            page-break-inside: avoid;
+        }
+
+        table.heatmap th {
+            background: #0a0a12;
+            color: var(--yellow-hazard);
+            font-weight: 700;
+            padding: 12px 14px;
+            text-align: start;
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 3px solid var(--orange-aggressive);
+            font-size: var(--fs-sm);
+        }
+
+        table.heatmap td {
+            padding: 10px 14px;
+            border: 1px solid var(--border-subtle);
+            vertical-align: middle;
+            background-color: var(--bg-surface);
+            color: var(--text-secondary);
+            font-family: 'Roboto Mono', 'Cairo', monospace;
+            font-size: var(--fs-sm);
+            text-align: center;
+        }
+
+        table.heatmap td.heat-critical {
+            background: rgba(139, 0, 0, 0.55);
+            color: #ff6666;
+            font-weight: 700;
+            border: 1px solid rgba(255, 0, 0, 0.4);
+        }
+        table.heatmap td.heat-high {
+            background: rgba(255, 69, 0, 0.4);
+            color: #ffaa77;
+            font-weight: 600;
+        }
+        table.heatmap td.heat-medium {
+            background: rgba(255, 165, 0, 0.25);
+            color: #ffcc88;
+        }
+        table.heatmap td.heat-low {
+            background: rgba(255, 215, 0, 0.12);
+            color: #ffe8a0;
+        }
+        table.heatmap td.heat-none {
+            background: rgba(0, 180, 80, 0.15);
+            color: #88ddaa;
+        }
+
+        /* Standard tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            font-size: var(--fs-sm);
+            border: 2px solid var(--border-panel);
+            page-break-inside: avoid;
+        }
+
+        th {
+            background: #0a0a12;
+            color: var(--yellow-hazard);
+            font-weight: 700;
+            padding: 12px 14px;
+            text-align: start;
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 3px solid var(--orange-aggressive);
+            font-size: var(--fs-sm);
+        }
+
+        td {
+            padding: 10px 14px;
+            border: 1px solid var(--border-subtle);
+            vertical-align: middle;
+            background-color: var(--bg-surface);
+            color: var(--text-secondary);
+            /* Allow text wrapping for text tables */
+            white-space: normal;
+            word-break: normal;
+        }
+
+        tr:nth-child(even) td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tr:hover td {
+            background: rgba(255, 69, 0, 0.06);
+        }
+
+        /* ============================================================
+           CODE / PRE BLOCKS
+           ============================================================ */
+        pre {
+            font-family: 'Roboto Mono', 'Courier New', monospace;
+            background: #06060f;
+            color: #c8d6e5;
+            padding: 1.4rem;
+            direction: ltr;
+            text-align: left;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            margin: 1.8rem 0;
+            font-size: var(--fs-sm);
+            border: 2px solid var(--border-panel);
+            border-inline-start: 4px solid var(--orange-aggressive);
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6);
+            letter-spacing: 0.3px;
+        }
+
+        /* ============================================================
+           FOOTER
+           ============================================================ */
+        .footer-end {
+            margin-top: 3rem;
+            padding: 2rem;
+            background: var(--bg-elevated);
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: 2px solid var(--border-panel);
+            color: var(--text-primary);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            page-break-inside: avoid;
+        }
+
+        .footer-end a {
+            display: inline-block;
+            margin-top: 1rem;
+            color: var(--orange-aggressive);
+            font-weight: bold;
+            text-decoration: none;
+            border-bottom: 2px solid var(--orange-aggressive);
+            padding-bottom: 2px;
+            transition: 0.2s;
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            aria-label: "العودة إلى أعلى الصفحة";
+        }
+
+        .footer-end a:hover {
+            color: var(--yellow-hazard);
+            border-bottom-color: var(--yellow-hazard);
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        /* ============================================================
+           ALERT STRIP
+           ============================================================ */
+        .alert-strip {
+            background: repeating-linear-gradient(45deg,
+                    rgba(139, 0, 0, 0.5) 0px,
+                    rgba(139, 0, 0, 0.5) 10px,
+                    rgba(0, 0, 0, 0.6) 10px,
+                    rgba(0, 0, 0, 0.6) 20px);
+            color: #ffffff;
+            padding: 10px 20px;
+            margin: 1.5rem 0;
+            font-family: 'Oswald', 'Roboto Mono', monospace;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-size: var(--fs-sm);
+            text-align: center;
+            border: 2px solid var(--red-industrial);
+            page-break-inside: avoid;
+        }
+
+        /* ============================================================
+           KPI THRESHOLD INDICATORS
+           ============================================================ */
+        .kpi-threshold-green {
+            color: #00e676;
+            font-weight: 700;
+        }
+        .kpi-threshold-yellow {
+            color: #FFD700;
+            font-weight: 700;
+        }
+        .kpi-threshold-red {
+            color: #ff3333;
+            font-weight: 700;
+        }
+
+        /* ============================================================
+           ADDRESS / DL for author info
+           ============================================================ */
+        address.author-info {
+            font-style: normal;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            font-family: 'Roboto Mono', 'Cairo', monospace;
+            font-size: var(--fs-base);
+            color: var(--text-secondary);
+        }
+
+        dl.meta-definitions {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 6px 16px;
+            font-family: 'Roboto Mono', 'Cairo', monospace;
+            font-size: var(--fs-sm);
+            color: var(--text-secondary);
+            margin: 1rem 0;
+        }
+
+        dl.meta-definitions dt {
+            color: var(--orange-glow);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        dl.meta-definitions dd {
+            color: var(--text-secondary);
+        }
+
+        /* ============================================================
+           REDUCED MOTION PREFERENCES
+           ============================================================ */
+        @media (prefers-reduced-motion: reduce) {
+            .header::before {
+                animation: none !important;
+            }
+            .system-badge {
+                animation: none !important;
+            }
+            .blink-dot {
+                animation: none !important;
+                opacity: 1 !important;
+            }
+            .pulse-badge {
+                animation: none !important;
+            }
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* ============================================================
+           PRINT STYLES (A4 / PDF Optimized)
+           ============================================================ */
+        @media print {
+            @page {
+                size: A4;
+                margin: 10mm 8mm 15mm 8mm;
+                @bottom-center {
+                    content: "صفحة " counter(page) " من " counter(pages);
+                    font-family: 'Cairo', sans-serif;
+                    font-size: 9pt;
+                    color: #8a8a9a;
+                }
+                @top-right {
+                    content: "النموذج التشغيلي المتكامل — مستودعات كارفور";
+                    font-family: 'Cairo', sans-serif;
+                    font-size: 7pt;
+                    color: #8a8a9a;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+            }
+
+            body {
+                background: #08080d !important;
+                padding: 0;
+                margin: 0;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                -webkit-filter: none !important;
+                filter: none !important;
+                background-image:
+                    repeating-linear-gradient(0deg,
+                        rgba(255, 69, 0, 0.02) 0px,
+                        rgba(255, 69, 0, 0.02) 1px,
+                        transparent 1px,
+                        transparent 3px),
+                    repeating-linear-gradient(90deg,
+                        rgba(255, 69, 0, 0.02) 0px,
+                        rgba(255, 69, 0, 0.02) 1px,
+                        transparent 1px,
+                        transparent 3px) !important;
+                background-size: 4px 4px, 4px 4px !important;
+                background-attachment: scroll !important;
+            }
+
+            .main-container {
+                box-shadow: none !important;
+                border: 3px solid #FF4500 !important;
+                max-width: 100%;
+                margin: 0;
+                background: #0f0f18 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .main-container::before {
+                display: block !important;
+                opacity: 0.5 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            nav.sticky-nav,
+            .pdf-download-btn,
+            .no-print {
+                display: none !important;
+            }
+
+            .header {
+                background: linear-gradient(180deg, #0c0c1a 0%, #0a0a16 100%) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                border-bottom: 4px solid #FF4500 !important;
+            }
+
+            .header::before {
+                display: block !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                animation: none !important;
+            }
+
+            .header .system-badge {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                animation: none !important;
+                border: 2px solid #FF4500 !important;
+                color: #FF4500 !important;
+            }
+
+            .header .system-badge .blink-dot {
+                animation: none !important;
+                opacity: 1 !important;
+                background: #FF4500 !important;
+                box-shadow: 0 0 8px #FF4500 !important;
+            }
+
+            .chapter~.chapter {
+                page-break-before: always;
+            }
+
+            .chapter {
+                page-break-inside: avoid;
+                margin-bottom: 1.5rem;
+                border: 2px solid #2a2a3a !important;
+                background: #14141f !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .chapter::before {
+                display: block !important;
+                background: linear-gradient(180deg, #FF4500 0%, #8B0000 100%) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .chapter-head h2,
+            h3,
+            h4 {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            h3 {
+                color: #FFD700 !important;
+                border-inline-start: 5px solid #FF4500 !important;
+            }
+
+            h4 {
+                color: #ff5e1a !important;
+            }
+
+            .box {
+                background: #1a1a2a !important;
+                border: 2px solid #2a2a3a !important;
+                border-inline-start: 5px solid #FF4500 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                page-break-inside: avoid;
+            }
+
+            .box::after {
+                display: block !important;
+                background: #FF4500 !important;
+                box-shadow: 0 0 10px rgba(255, 69, 0, 0.4) !important;
+            }
+
+            table,
+            th,
+            td {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                page-break-inside: avoid;
+            }
+
+            th {
+                background: #0a0a12 !important;
+                color: #FFD700 !important;
+                border-bottom: 3px solid #FF4500 !important;
+            }
+
+            td {
+                background-color: #14141f !important;
+                color: #c0c0cc !important;
+            }
+
+            tr:nth-child(even) td {
+                background: rgba(255, 255, 255, 0.02) !important;
+            }
+
+            table.heatmap td.heat-critical {
+                background: rgba(139, 0, 0, 0.55) !important;
+            }
+            table.heatmap td.heat-high {
+                background: rgba(255, 69, 0, 0.4) !important;
+            }
+            table.heatmap td.heat-medium {
+                background: rgba(255, 165, 0, 0.25) !important;
+            }
+            table.heatmap td.heat-low {
+                background: rgba(255, 215, 0, 0.12) !important;
+            }
+            table.heatmap td.heat-none {
+                background: rgba(0, 180, 80, 0.15) !important;
+            }
+
+            pre {
+                background: #06060f !important;
+                border: 2px solid #2a2a3a !important;
+                border-inline-start: 4px solid #FF4500 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                page-break-inside: avoid;
+            }
+
+            .footer-end {
+                background: #1a1a2a !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                page-break-inside: avoid;
+            }
+
+            .gauge-dashboard {
+                page-break-inside: avoid;
+            }
+
+            .gauge-card {
+                page-break-inside: avoid;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background: #1a1a2a !important;
+                border: 2px solid #2a2a3a !important;
+            }
+
+            .gauge-card .gauge-ring {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .gauge-card.critical .gauge-ring {
+                border-color: #8B0000 !important;
+                box-shadow: 0 0 15px rgba(139, 0, 0, 0.5) !important;
+            }
+            .gauge-card.warning .gauge-ring {
+                border-color: #FF4500 !important;
+                box-shadow: 0 0 15px rgba(255, 69, 0, 0.4) !important;
+            }
+            .gauge-card.nominal .gauge-ring {
+                border-color: #FFD700 !important;
+                box-shadow: 0 0 15px rgba(255, 215, 0, 0.3) !important;
+            }
+            .gauge-card.optimal .gauge-ring {
+                border-color: #00e676 !important;
+                box-shadow: 0 0 15px rgba(0, 230, 118, 0.3) !important;
+            }
+
+            .timeline-flow {
+                page-break-inside: avoid;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background: #1a1a2a !important;
+                border: 2px solid #2a2a3a !important;
+            }
+
+            .timeline-step {
+                background: #14141f !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                page-break-inside: avoid;
+            }
+            .timeline-step.active {
+                background: rgba(255, 69, 0, 0.1) !important;
+                border-bottom: 3px solid #FF4500 !important;
+            }
+
+            .alert-strip {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                page-break-inside: avoid;
+                background: repeating-linear-gradient(45deg,
+                        rgba(139, 0, 0, 0.5) 0px,
+                        rgba(139, 0, 0, 0.5) 10px,
+                        rgba(0, 0, 0, 0.6) 10px,
+                        rgba(0, 0, 0, 0.6) 20px) !important;
+                border: 2px solid #8B0000 !important;
+            }
+
+            .header h1 {
+                text-shadow: 0 0 20px rgba(255, 69, 0, 0.3) !important;
+            }
+
+            .chapter-head h2 {
+                text-shadow: 0 0 15px rgba(255, 69, 0, 0.25) !important;
+            }
+
+            h3 {
+                text-shadow: 0 0 10px rgba(255, 215, 0, 0.2) !important;
+            }
+
+            /* Ensure tables don't overflow page */
+            .table-scroll-wrapper {
+                overflow-x: visible;
+            }
+        }
+
+        /* ============================================================
+           RESPONSIVE STYLES
+           ============================================================ */
+        @media (max-width: 800px) {
+            .header {
+                padding: 1.5rem 1.2rem;
+            }
+            .content {
+                padding: 1.5rem 1rem;
+            }
+            nav.sticky-nav {
+                padding: 0.6rem 0.8rem;
+                gap: 8px;
+            }
+            .chapter-head h2 {
+                font-size: 1.4rem;
+            }
+            .header h1 {
+                font-size: 1.6rem;
+            }
+            .chapter {
+                padding: 1.2rem 1rem;
+            }
+            .gauge-dashboard {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .timeline-flow {
+                flex-direction: column;
+            }
+            .timeline-step {
+                border-inline-end: none;
+                border-bottom: 1px solid var(--border-subtle);
+            }
+
+            /* Wide tables: enable horizontal scroll */
+            table,
+            table.heatmap {
+                display: block;
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                white-space: nowrap;
+            }
+
+            /* Text-intensive tables: allow wrapping */
+            table.text-table,
+            table.text-table td,
+            table.text-table th {
+                white-space: normal;
+                word-break: normal;
+            }
+
+            pre {
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                font-size: 0.72rem;
+                padding: 1rem;
+            }
+
+            .nav-links a {
+                display: inline-flex;
+                align-items: center;
+                min-height: 44px;
+                padding: 10px 18px;
+                font-size: 0.82rem;
+                margin-bottom: 2px;
+            }
+
+            .meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                font-size: 0.82rem;
+            }
+
+            .header h1 i {
+                font-size: 1.8rem;
+            }
+
+            .header .system-badge {
+                font-size: 0.72rem;
+                letter-spacing: 1.5px;
+                padding: 5px 12px;
+            }
+
+            .header .sub-meta {
+                display: block;
+                font-size: 0.75rem;
+                padding: 8px 14px;
+            }
+
+            .chapter-head {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .chapter-num {
+                font-size: 1rem;
+                padding: 4px 14px;
+            }
+
+            h3 {
+                font-size: 1.2rem;
+                padding-inline-start: 14px;
+                border-inline-start-width: 4px;
+            }
+
+            h4 {
+                font-size: 1rem;
+            }
+
+            .box {
+                padding: 1.2rem 1.2rem;
+                border-inline-start-width: 4px;
+            }
+
+            .gauge-card {
+                padding: 1rem 0.6rem;
+            }
+
+            .gauge-card .gauge-ring {
+                width: 70px;
+                height: 70px;
+                border-width: 5px;
+            }
+
+            .gauge-card .gauge-ring .gauge-value {
+                font-size: 1.2rem;
+            }
+
+            .gauge-card .gauge-label {
+                font-size: 0.68rem;
+                letter-spacing: 1px;
+            }
+
+            .timeline-step {
+                padding: 0.8rem 0.6rem;
+                min-width: auto;
+            }
+
+            .timeline-step .step-icon {
+                font-size: 1.4rem;
+            }
+
+            .timeline-step .step-num {
+                font-size: 1rem;
+            }
+
+            .timeline-step .step-label {
+                font-size: 0.65rem;
+            }
+
+            .footer-end {
+                padding: 1.5rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .footer-end a {
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+                padding: 8px 16px;
+            }
+
+            .badge {
+                font-size: 0.7rem;
+                padding: 4px 14px;
+                letter-spacing: 1px;
+            }
+
+            .alert-strip {
+                font-size: 0.7rem;
+                padding: 8px 14px;
+                letter-spacing: 1px;
+            }
+
+            ul,
+            ol {
+                padding-inline-start: 1.5rem;
+            }
+
+            p {
+                font-size: 0.9rem;
+                line-height: 1.7;
+            }
+
+            li {
+                font-size: 0.88rem;
+                line-height: 1.7;
+                margin-bottom: 0.5rem;
+            }
+
+            th,
+            td {
+                padding: 8px 10px;
+                font-size: 0.72rem;
+            }
+
+            table.heatmap th,
+            table.heatmap td {
+                padding: 8px 10px;
+                font-size: 0.7rem;
+            }
+
+            body {
+                background-attachment: scroll;
+                padding: 8px 8px;
+            }
+
+            .main-container {
+                border-width: 2px;
+            }
+
+            .chapter {
+                margin-bottom: 2.5rem;
+                scroll-margin-top: 100px;
+            }
+
+            nav.sticky-nav .nav-title {
+                font-size: 0.85rem;
+            }
+
+            .nav-links {
+                gap: 4px 8px;
+            }
+
+            .doc-meta-bar {
+                font-size: 0.65rem;
+                gap: 8px;
+            }
+
+            .pdf-download-btn {
+                font-size: 0.7rem;
+                padding: 8px 16px;
+            }
+
+            dl.meta-definitions {
+                grid-template-columns: 1fr;
+                gap: 4px 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .gauge-dashboard {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .header {
+                padding: 1rem 0.8rem;
+            }
+
+            .header h1 {
+                font-size: 1.2rem;
+                gap: 8px;
+                letter-spacing: 0.2px;
+            }
+
+            .header h1 i {
+                font-size: 1.3rem;
+            }
+
+            .header .system-badge {
+                font-size: 0.62rem;
+                letter-spacing: 1px;
+                padding: 4px 10px;
+                margin-bottom: 10px;
+            }
+
+            .header .system-badge .blink-dot {
+                width: 7px;
+                height: 7px;
+                margin-inline-end: 5px;
+            }
+
+            .meta {
+                font-size: 0.7rem;
+                gap: 6px;
+                padding-top: 10px;
+                margin-top: 10px;
+            }
+
+            .header .sub-meta {
+                font-size: 0.68rem;
+                padding: 6px 10px;
+                margin-top: 8px;
+            }
+
+            .content {
+                padding: 1rem 0.5rem;
+            }
+
+            .chapter {
+                padding: 0.8rem 0.6rem;
+                margin-bottom: 1.8rem;
+                scroll-margin-top: 90px;
+            }
+
+            .chapter-head {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+                margin-bottom: 1.2rem;
+            }
+
+            .chapter-head h2 {
+                font-size: 1.1rem;
+                letter-spacing: 0.3px;
+            }
+
+            .chapter-num {
+                font-size: 0.85rem;
+                padding: 3px 12px;
+                letter-spacing: 1px;
+            }
+
+            h3 {
+                font-size: 1rem;
+                padding-inline-start: 10px;
+                border-inline-start-width: 3px;
+                margin: 1.2rem 0 0.7rem 0;
+                letter-spacing: 0.4px;
+            }
+
+            h4 {
+                font-size: 0.88rem;
+                margin: 1.2rem 0 0.5rem 0;
+                letter-spacing: 0.3px;
+            }
+
+            nav.sticky-nav {
+                padding: 0.5rem 0.5rem;
+                gap: 4px;
+            }
+
+            nav.sticky-nav .nav-title {
+                font-size: 0.72rem;
+                letter-spacing: 1px;
+            }
+
+            .nav-links a {
+                min-height: 40px;
+                padding: 8px 14px;
+                font-size: 0.68rem;
+                letter-spacing: 0.3px;
+            }
+
+            .box {
+                padding: 0.9rem 0.9rem;
+                border-inline-start-width: 3px;
+                margin: 1.2rem 0;
+                line-height: 1.7;
+            }
+
+            .gauge-card {
+                padding: 0.8rem 0.5rem;
+            }
+
+            .gauge-card .gauge-ring {
+                width: 60px;
+                height: 60px;
+                border-width: 4px;
+                margin-bottom: 6px;
+            }
+
+            .gauge-card .gauge-ring .gauge-value {
+                font-size: 1rem;
+            }
+
+            .gauge-card .gauge-label {
+                font-size: 0.62rem;
+            }
+
+            .timeline-step {
+                padding: 0.6rem 0.5rem;
+            }
+
+            .timeline-step .step-icon {
+                font-size: 1.2rem;
+                margin-bottom: 4px;
+            }
+
+            .timeline-step .step-num {
+                font-size: 0.85rem;
+            }
+
+            .timeline-step .step-label {
+                font-size: 0.6rem;
+            }
+
+            th,
+            td {
+                padding: 6px 7px;
+                font-size: 0.65rem;
+            }
+
+            table.heatmap th,
+            table.heatmap td {
+                padding: 6px 7px;
+                font-size: 0.62rem;
+            }
+
+            pre {
+                font-size: 0.62rem;
+                padding: 0.7rem;
+                margin: 1rem 0;
+            }
+
+            .footer-end {
+                padding: 1.2rem 0.6rem;
+                font-size: 0.78rem;
+                margin-top: 1.5rem;
+            }
+
+            .footer-end a {
+                min-height: 40px;
+                padding: 6px 14px;
+                font-size: 0.7rem;
+            }
+
+            .alert-strip {
+                font-size: 0.62rem;
+                padding: 6px 10px;
+                letter-spacing: 0.8px;
+                margin: 1rem 0;
+            }
+
+            .badge {
+                font-size: 0.62rem;
+                padding: 3px 10px;
+                letter-spacing: 0.5px;
+            }
+
+            p {
+                font-size: 0.8rem;
+                line-height: 1.6;
+                margin-bottom: 0.6rem;
+            }
+
+            li {
+                font-size: 0.78rem;
+                line-height: 1.6;
+                margin-bottom: 0.4rem;
+            }
+
+            ul,
+            ol {
+                padding-inline-start: 1.2rem;
+                margin: 0.8rem 0;
+            }
+
+            body {
+                padding: 4px 4px;
+                line-height: 1.7;
+            }
+
+            .main-container {
+                border-width: 1.5px;
+            }
+
+            .chapter::before {
+                width: 3px;
+            }
+
+            .box::after {
+                width: 3px;
+                inset-inline-start: -3px;
+            }
+
+            .timeline-flow,
+            table,
+            table.heatmap,
+            pre {
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .doc-meta-bar {
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .pdf-download-btn {
+                width: 100%;
+                justify-content: center;
+                margin-inline-start: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+
+        <!-- ============================================================
+        HEADER
+        ============================================================ -->
+        <header class="header">
+            <span class="system-badge" aria-label="حالة النظام: نشط — مخرجات مركز القيادة">
+                <span class="blink-dot" aria-hidden="true"></span>  مبادرة واقترحات تم رسمها من خلال تصور ذهني للالية العمليات المخزنية
+            </span>
+            <h1>
+                <i class="fas fa-industry" aria-hidden="true"></i>
+               مقترح ذهني لنموذج التشغيلي المتكامل لمستودعات كارفور والبرندات الرئيسية 
+            </h1>
+            <div class="meta">
+                <address class="author-info">
+                    <span><i class="fas fa-user-edit" aria-hidden="true"></i> إعداد: محمد إبراهيم البرشي</span>
+                    <span><i class="fas fa-user-tie" aria-hidden="true"></i> إلى: المدراء المباشرين أ.خالد بالروين . أ.محمد الزوي</span>
+                    <span class="badge"><i class="fas fa-bullseye" aria-hidden="true"></i> الغرض: حجر أساس للعمليات المخزنية</span>
+                </address>
+            </div>
+            <div class="sub-meta">
+                <i class="fas fa-clipboard-list" aria-hidden="true"></i> أدوات البحث: الخبرة العملية – الأخطاء السابقة – نماذج العمل العالمية – معلومات واقعية معاصرة
+            </div>
+            <!-- Document metadata -->
+            <div class="doc-meta-bar">
+                <span class="version-pill"><i class="fas fa-code-branch" aria-hidden="true"></i> التقرير: 1.0</span>
+                <span><i class="fas fa-calendar-check" aria-hidden="true"></i> آخر تحديث: 2026-04-23</span>
+           </div>
+        </header>
+
+        <!-- ============================================================
+        NAVIGATION (Semantic <nav>)
+        ============================================================ -->
+        <nav class="sticky-nav" aria-label="فهرس التنقل الرئيسي">
+            <span class="nav-title"><i class="fas fa-list" aria-hidden="true"></i> الفهرس:</span>
+            <div class="nav-links" role="navigation" aria-label="روابط الأبواب">
+                <a href="#exec-summary">الملخص التنفيذي</a>
+                <a href="#bab1">١- الإطار العام</a>
+                <a href="#bab2">٢- الهيكل التنظيمي</a>
+                <a href="#bab3">٣- الدورة المستندية</a>
+                <a href="#bab4">٤- ERP</a>
+                <a href="#bab5">٥- النماذج</a>
+                <a href="#bab6">٦- Excel</a>
+                <a href="#bab7">٧- مؤشرات</a>
+                <a href="#bab8">٨- طوارئ</a>
+                <a href="#bab9">٩- HACCP</a>
+                <a href="#bab10">١٠- تدريب</a>
+                <a href="#bab11">١١- ملاحق</a>
+            </div>
+        </nav>
+
+        <!-- ============================================================
+        MAIN CONTENT
+        ============================================================ -->
+        <main class="content">
+
+            <!-- ========================================================
+            NEW: الملخص التنفيذي (Executive Summary)
+            ======================================================== -->
+            <section id="exec-summary" class="chapter" aria-labelledby="exec-heading">
+                <div class="chapter-head">
+                    <h2 id="exec-heading">الملخص التنفيذي — Executive Summary</h2>
+                    <span class="chapter-num">تمهيد</span>
+                </div>
+
+                <h3>نطاق المستودع الافتراضي الذي تم يناء المقترح عليه (Warehouse Scope)</h3>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>المعامل</th><th>القيمة</th></tr>
+                        <tr><td>إجمالي عدد الأصناف (SKU)</td><td>+50,000 صنف نشط</td></tr>
+                        <tr><td>عدد الفروع المخدومة</td><td>+1 فرعاً (هايبر/سوبر/تجزئة)</td></tr>
+                        <tr><td>المساحة الإجمالية</td><td>~55,000 م²</td></tr>
+                        <tr><td>سعة التخزين الجاف</td><td>~45,000 طبلية</td></tr>
+                        <tr><td>سعة التخزين المبرد</td><td>~6,000 طبلية</td></tr>
+                        <tr><td>سعة التخزين المجمد</td><td>~4,000 طبلية</td></tr>
+                        <tr><td>عدد الأرصفة</td><td>24 رصيف تحميل/تفريغ</td></tr>
+                        <tr><td>الطاقة الاستيعابية اليومية للاستلام</td><td>+50 شاحنة/يوم</td></tr>
+                    </table>
+                </div>
+
+                <h3>المبادئ التشغيلية العشرة (10 Operational Principles)</h3>
+                <ol>
+                    <li><strong>لا حركة بدون مستند:</strong> كل حركة للمخزون تُوثّق بمستند رسمي معتمد.</li>
+                    <li><strong>FEFO أولاً:</strong> "ما ينتهي أولاً يخرج أولاً" قاعدة صارمة لجميع المنتجات الغذائية.</li>
+                    <li><strong>الفصل التام:</strong> فصل المنتجات الغذائية عن غير الغذائية، وفصل المواد المسببة للحساسية.</li>
+                    <li><strong>سلسلة تبريد غير منقطعة:</strong> مراقبة حرارة المنتجات المبردة والمجمدة 24/7.</li>
+                    <li><strong>الجودة عند الاستلام:</strong> فحص 100% للشحنات الغذائية الواردة قبل القبول.</li>
+                    <li><strong>المساءلة الفردية:</strong> كل موظف مسؤول مباشرة عن دقة العمل الذي يؤديه.</li>
+                    <li><strong>التحسين المستمر:</strong> مراجعة أسبوعية للمؤشرات واتخاذ إجراءات تصحيحية فورية.</li>
+                    <li><strong>السلامة أولاً:</strong> لا عملية تستحق المخاطرة بسلامة الموظفين أو المنتجات.</li>
+                    <li><strong>الشفافية الكاملة:</strong> جميع البيانات متاحة للمراجعة والتدقيق في أي وقت.</li>
+                    <li><strong>الجاهزية الدائمة:</strong> خطط طوارئ مُختبرة لانقطاع التيار، فشل الأنظمة، والكوارث.</li>
+                </ol>
+
+                <h3>أعلى 5 مؤشرات أداء رئيسية وأهدافها (Top 5 KPIs + Targets)</h3>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>المؤشر KPI</th><th>الهدف</th><th>الحد الأدنى المقبول</th><th>التكرار</th></tr>
+                        <tr><td>دقة المخزون (Inventory Accuracy)</td><td class="kpi-threshold-green">≥ 98.5%</td><td class="kpi-threshold-yellow">97%</td><td>يومي</td></tr>
+                        <tr><td>مستوى خدمة الفروع (Fill Rate)</td><td class="kpi-threshold-green">≥ 97%</td><td class="kpi-threshold-yellow">94%</td><td>يومي</td></tr>
+                        <tr><td>نسبة التالف والفاقد (Shrinkage)</td><td class="kpi-threshold-green">&lt; 0.5%</td><td class="kpi-threshold-yellow">0.8%</td><td>شهري</td></tr>
+                        <tr><td>زمن دورة الطلب (Order Cycle Time)</td><td class="kpi-threshold-green">&lt; 3 ساعات</td><td class="kpi-threshold-yellow">4 ساعات</td><td>يومي</td></tr>
+                        <tr><td>إنتاجية العامل (CPH)</td><td class="kpi-threshold-green">90-110</td><td class="kpi-threshold-yellow">80</td><td>أسبوعي</td></tr>
+                    </table>
+                </div>
+
+                <h3>أعلى 5 مخاطر تشغيلية وخطط التخفيف (Top 5 Operational Risks + Mitigation)</h3>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>الخطر</th><th>الاحتمالية</th><th>الأثر</th><th>خطة التخفيف</th></tr>
+                        <tr><td>انقطاع التيار الكهربائي</td><td class="kpi-threshold-yellow">متوسطة</td><td class="kpi-threshold-red">عالي</td><td>مولدات احتياطية + صيانة شهرية + مخزون وقود 72 ساعة</td></tr>
+                        <tr><td>فشل نظام WMS/ERP</td><td class="kpi-threshold-yellow">متوسطة</td><td class="kpi-threshold-red">عالي</td><td>حقيبة طوارئ ورقية + تدريب على الوضع اليدوي</td></tr>
+                        <tr><td>كسر سلسلة التبريد</td><td class="kpi-threshold-green">منخفضة</td><td class="kpi-threshold-red">حرج</td><td>مجسات حرارة 24/7 + إنذارات SMS + صيانة وقائية</td></tr>
+                        <tr><td>نقص العمالة المفاجئ</td><td class="kpi-threshold-yellow">متوسطة</td><td class="kpi-threshold-yellow">متوسط</td><td>قائمة موظفين احتياط + تدريب تبادلي بين الأقسام</td></tr>
+                        <tr><td>تلوث منتج غذائي / سحب تشغيلة</td><td class="kpi-threshold-green">منخفضة</td><td class="kpi-threshold-red">حرج</td><td>نظام تتبع كامل + إجراء سحب خلال 4 ساعات</td></tr>
+                    </table>
+                </div>
+
+                <!-- Glossary -->
+                <h3>مسرد المصطلحات (Glossary)</h3>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>المصطلح</th><th>التعريف</th></tr>
+                        <tr><td><strong>PR</strong> (Purchase Requisition)</td><td>طلب الشراء — مستند داخلي يصدر آلياً عند بلوغ نقطة إعادة الطلب.</td></tr>
+                        <tr><td><strong>PO</strong> (Purchase Order)</td><td>أمر الشراء — مستند تعاقدي رسمي يُصدر من كارفور إلى المورد.</td></tr>
+                        <tr><td><strong>ASN</strong> (Advanced Shipping Notice)</td><td>إشعار الشحن المسبق — إشعار إلكتروني من المورد بتفاصيل الشحنة القادمة.</td></tr>
+                        <tr><td><strong>GRN</strong> (Goods Received Note)</td><td>مذكرة استلام البضائع — الإقرار الرسمي بدخول البضائع لعهدة المستودع.</td></tr>
+                        <tr><td><strong>WMS</strong> (Warehouse Management System)</td><td>نظام إدارة المستودعات — النظام الإلكتروني لإدارة جميع عمليات المستودع.</td></tr>
+                        <tr><td><strong>ERP</strong> (Enterprise Resource Planning)</td><td>نظام تخطيط موارد المؤسسة — النظام الشامل لإدارة موارد الشركة.</td></tr>
+                        <tr><td><strong>FEFO</strong> (First Expired First Out)</td><td>ما ينتهي أولاً يخرج أولاً — قاعدة صرف المنتجات حسب تاريخ انتهاء الصلاحية.</td></tr>
+                        <tr><td><strong>CPH</strong> (Cases Per Hour)</td><td>عدد الكراتين المُعالجة لكل عامل في الساعة — مقياس للإنتاجية.</td></tr>
+                        <tr><td><strong>Fill Rate</strong></td><td>مستوى الخدمة — النسبة المئوية للكميات المشحونة مقارنة بالمطلوبة من الفروع.</td></tr>
+                    </table>
+                </div>
+            </section>
+
+            <!-- الباب الأول : الإطار العام والتأسيس المنهجي -->
+            <section id="bab1" class="chapter" aria-labelledby="ch1-heading">
+                <div class="chapter-head">
+                    <h2 id="ch1-heading">الباب الأول: الإطار العام والتأسيس المنهجي</h2>
+                    <span class="chapter-num">١</span>
+                </div>
+
+                <h3>المقدمة التنفيذية</h3>
+                <p>انطلاقاً من متطلبات بناء نظام مستودعات مركزي يليق باسم ومكانة كارفور كواحدة من أكبر سلاسل التجزئة في العالم، تم إعداد هذا البحث الشامل والموسع ليكون بمثابة المرجعية التشغيلية الكاملة لأي مستودع رئيسي يعمل وفق نموذج كارفور. إن الهدف من هذا البحث ليس مجرد الوصف النظري، بل بناء إطار عملي قابل للتطبيق الفعلي في بيئة العمل الحقيقية، مع الأخذ بعين الاعتبار كافة التعقيدات والتحديات التي تواجه إدارة سلسلة إمداد بهذا الحجم والتنوع.</p>
+                <p>إن الفرضية الأساسية التي بني عليها هذا البحث هي أن المستودع الرئيسي لكارفور ليس مجرد مساحة تخزين، بل هو القلب النابض لعمليات السلسلة بأكملها، حيث تلتقي فيه آلاف الأصناف من مئات الموردين ليتم توزيعها بدقة وسرعة على شبكة واسعة من المتاجر والفروع التي تخدم ملايين العملاء يومياً.</p>
+
+                <h3>تحديد الغرض من البحث الشامل</h3>
+                <p>الغرض الأساسي من هذا البحث الشامل عن كارفور يتلخص في النقاط الجوهرية التالية:</p>
+                <p><strong>أولاً:</strong> فهم التركيبة الفريدة لمنظومة كارفور التشغيلية، والتي تتميز بتنوع هائل في المنتجات يشمل:</p>
+                <ul>
+                    <li>المنتجات الغذائية الطازجة التي تتطلب سلسلة تبريد متكاملة</li>
+                    <li>المنتجات المجمدة التي تحتاج إلى بيئة تخزين خاصة</li>
+                    <li>المنتجات الجافة ذات العمر الافتراضي الطويل</li>
+                    <li>المنتجات غير الغذائية التي تتنوع بين الأدوات المنزلية والإلكترونيات</li>
+                    <li>العلامات التجارية الخاصة بكارفور والتي تتطلب إدارة خاصة للمخزون</li>
+                </ul>
+                <p><strong>ثانياً:</strong> تحديد الآليات التشغيلية التي تمكن كارفور من الحفاظ على:</p>
+                <ul>
+                    <li>مستويات مخزون مثالية تمنع النفاد وتقلل التالف</li>
+                    <li>سرعة تدفق البضائع من المورد إلى رف المتجر</li>
+                    <li>جودة المنتجات خاصة الغذائية منها</li>
+                    <li>تكاليف تشغيلية منخفضة رغم ضخامة العمليات</li>
+                </ul>
+                <p><strong>ثالثاً:</strong> استخلاص نموذج عام يمكن تطبيقه في أي مستودع رئيسي يتبع نموذج كارفور، بحيث يكون هذا النموذج:</p>
+                <ul>
+                    <li>قابلاً للتطبيق الفعلي وليس نظرياً فقط</li>
+                    <li>مرناً بما يكفي لاستيعاب التنوع الهائل في المنتجات</li>
+                    <li>محكماً بما يضمن الرقابة المالية والإدارية</li>
+                    <li>قابلاً للتوسع مع نمو حجم الأعمال</li>
+                </ul>
+
+                <h3>السيناريو الافتراضي للتطبيق العملي</h3>
+                <p>لتحقيق أقصى درجات الواقعية والفائدة العملية من هذا البحث، تم افتراض السيناريو التالي:</p>
+                <p>نحن الآن نمثل المستودع الرئيسي المركزي لكارفور في منطقة جغرافية واسعة، وهذا المستودع مسؤول عن تغذية شبكة متكاملة من الفروع تشمل:</p>
+                <ul>
+                    <li>الهايبر ماركت: الفروع الضخمة التي تقدم تشكيلة كاملة من المنتجات</li>
+                    <li>السوبر ماركت: الفروع المتوسطة التي تركز على المواد الغذائية الأساسية</li>
+                    <li>متاجر التجزئة الصغيرة: الفروع السريعة التي تخدم الأحياء السكنية</li>
+                </ul>
+                <p>وهذا يعني أن المستودع الذي نصممه يجب أن يكون قادراً على:</p>
+                <ul>
+                    <li>التعامل مع أكثر من 50,000 صنف مختلف في نفس الوقت</li>
+                    <li>استقبال وتجهيز آلاف الطلبات يومياً</li>
+                    <li>إدارة مخزون بملايين القطع</li>
+                    <li>خدمة فروع تبعد مسافات متفاوتة عن المستودع</li>
+                    <li>التعامل مع دورات حياة مختلفة للمنتجات من حيث الصلاحية والطلب</li>
+                </ul>
+
+                <h3>المنهجية المتبعة في هذا البحث</h3>
+                <p>تم بناء هذا البحث وفق منهجية علمية تتكون من عدة طبقات مترابطة:</p>
+                <p><strong>الطبقة الأولى: الطبقة النظرية المرجعية</strong></p>
+                <ul>
+                    <li>دراسة معمقة لنموذج كارفور العالمي في إدارة المستودعات</li>
+                    <li>تحليل أفضل الممارسات العالمية في قطاع التجزئة</li>
+                    <li>استعراض معايير سلامة الغذاء العالمية المطبقة في كارفور</li>
+                </ul>
+                <p><strong>الطبقة الثانية: الطبقة الإجرائية التطبيقية</strong></p>
+                <ul>
+                    <li>تحديد كافة الإجراءات التشغيلية خطوة بخطوة</li>
+                    <li>وضع السياسات المنظمة لكل عملية</li>
+                    <li>تحديد المسؤوليات والصلاحيات</li>
+                </ul>
+                <p><strong>الطبقة الثالثة: الطبقة النظامية التقنية</strong></p>
+                <ul>
+                    <li>تحديد متطلبات نظام إدارة المستودعات الإلكتروني</li>
+                    <li>وضع آليات الربط بين العمليات والتقنية</li>
+                    <li>تحديد مؤشرات الأداء الرئيسية</li>
+                </ul>
+                <p><strong>الطبقة الرابعة: الطبقة الرقابية المالية</strong></p>
+                <ul>
+                    <li>وضع نظام المطابقات المالية</li>
+                    <li>تحديد إجراءات الرقابة الداخلية</li>
+                    <li>وضع آليات منع الاحتيال والأخطاء</li>
+                </ul>
+            </section>
+
+            <!-- الباب الثاني : الهيكل التنظيمي -->
+            <section id="bab2" class="chapter" aria-labelledby="ch2-heading">
+                <div class="chapter-head">
+                    <h2 id="ch2-heading">الباب الثاني: الهيكل التنظيمي والتقسيمات الأساسية للمستودع الرئيسي</h2>
+                    <span class="chapter-num">٢</span>
+                </div>
+
+                <!-- HEATMAP: Warehouse Zone Activity -->
+                <div class="alert-strip">
+                    <i class="fas fa-map-marked-alt" aria-hidden="true"></i> WAREHOUSE ZONE ACTIVITY HEATMAP — تحليل كثافة النشاط حسب المنطقة
+                </div>
+                <div class="table-scroll-wrapper">
+                    <table class="heatmap">
+                        <tr><th>المنطقة</th><th>المساحة (م²)</th><th>معدل الدوران اليومي</th><th>كثافة العمالة</th><th>مستوى الخطورة</th><th>حالة المنطقة</th></tr>
+                        <tr><td>منطقة الاستلام</td><td>2,500</td><td class="heat-high">85%</td><td class="heat-high">مرتفع</td><td class="heat-medium">متوسط</td><td class="heat-none">نشطة</td></tr>
+                        <tr><td>التخزين الجاف</td><td>30,000</td><td class="heat-medium">62%</td><td class="heat-medium">متوسط</td><td class="heat-low">منخفض</td><td class="heat-none">مستقرة</td></tr>
+                        <tr><td>التخزين المبرد</td><td>4,500</td><td class="heat-high">78%</td><td class="heat-high">مرتفع</td><td class="heat-critical">حرج</td><td class="heat-high">مراقَبة</td></tr>
+                        <tr><td>التخزين المجمد</td><td>3,200</td><td class="heat-medium">55%</td><td class="heat-medium">متوسط</td><td class="heat-critical">حرج</td><td class="heat-high">مراقَبة</td></tr>
+                        <tr><td>منطقة الانتقاء</td><td>6,000</td><td class="heat-critical">92%</td><td class="heat-critical">عالي جداً</td><td class="heat-high">مرتفع</td><td class="heat-high">ذروة</td></tr>
+                        <tr><td>منطقة الشحن</td><td>3,800</td><td class="heat-high">80%</td><td class="heat-high">مرتفع</td><td class="heat-medium">متوسط</td><td class="heat-none">نشطة</td></tr>
+                        <tr><td>المنتجات عالية القيمة</td><td>800</td><td class="heat-low">25%</td><td class="heat-low">منخفض</td><td class="heat-critical">حرج</td><td class="heat-none">مؤمَّنة</td></tr>
+                    </table>
+                </div>
+
+                <!-- NEW: Capacity Planning Section -->
+                <h3>تخطيط السعة والطاقة الاستيعابية (Capacity Planning)</h3>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>المورد</th><th>السعة التصميمية</th><th>الاستخدام الحالي</th><th>حد الذروة</th><th>ملاحظات</th></tr>
+                        <tr><td>عدد الأرصفة (Docks)</td><td>24 رصيفاً</td><td>18 رصيفاً نشطاً</td><td>22 رصيفاً</td><td>رصيفان احتياطيان للطوارئ</td></tr>
+                        <tr><td>طاقة الاستلام/ساعة</td><td>45 طبلية/ساعة/رصيف</td><td>38 طبلية/ساعة</td><td>50 طبلية/ساعة</td><td>يعتمد على نوع المنتج</td></tr>
+                        <tr><td>طاقة الانتقاء (Picking)</td><td>1,200 كرتونة/ساعة</td><td>980 كرتونة/ساعة</td><td>1,350 كرتونة/ساعة</td><td>خلال المواسم</td></tr>
+                        <tr><td>سعة التخزين المبرد</td><td>6,000 طبلية</td><td>4,800 طبلية (80%)</td><td>5,700 طبلية</td><td>لا تتجاوز 95% للتهوية</td></tr>
+                        <tr><td>سعة التخزين المجمد</td><td>4,000 طبلية</td><td>3,100 طبلية (78%)</td><td>3,800 طبلية</td><td>نفس القاعدة</td></tr>
+                    </table>
+                </div>
+
+                <p>الهيكل التنظيمي الكامل للمستودع الرئيسي</p>
+                <p>إن نجاح أي مستودع بحجم كارفور يبدأ من هيكل تنظيمي واضح ومحكم يحدد المسؤوليات والصلاحيات بشكل لا يقبل الالتباس. فيما يلي الهيكل التنظيمي المقترح:</p>
+
+                <h3>أولاً: الإدارة العليا للمستودع</h3>
+                <p><strong>1. مدير عمليات المستودع الرئيسي</strong></p>
+                <p>يقع على عاتقه:</p>
+                <ul>
+                    <li>الإشراف العام على كافة أنشطة المستودع</li>
+                    <li>وضع الاستراتيجيات التشغيلية قصيرة وطويلة المدى</li>
+                    <li>إدارة الميزانية التشغيلية التي قد تتجاوز مئات الملايين</li>
+                    <li>التنسيق مع الإدارة المركزية لكارفور</li>
+                    <li>اعتماد السياسات والإجراءات الرئيسية</li>
+                    <li>إدارة علاقات الموردين الكبار</li>
+                    <li>مراجعة وتقييم مؤشرات الأداء الشاملة</li>
+                    <li>اتخاذ القرارات الاستراتيجية المتعلقة بالتوسعات</li>
+                </ul>
+                <p><strong>2. مدير المستودع التنفيذي</strong></p>
+                <ul>
+                    <li>الإشراف اليومي المباشر على جميع الأقسام</li>
+                    <li>حل المشكلات الطارئة والمعقدة</li>
+                    <li>ضمان التزام جميع الإدارات بالإجراءات المعتمدة</li>
+                    <li>التنسيق بين الإدارات المختلفة</li>
+                    <li>إعداد التقارير الدورية للإدارة العليا</li>
+                    <li>إدارة الموارد البشرية بالمستودع</li>
+                    <li>متابعة خطط التدريب والتطوير</li>
+                    <li>ضمان تطبيق معايير السلامة المهنية</li>
+                </ul>
+                <p><strong>3. مدير أنظمة المعلومات والتحول الرقمي</strong></p>
+                <ul>
+                    <li>الإشراف على نظام إدارة المستودعات الإلكتروني</li>
+                    <li>ضمان تكامل أنظمة المستودع مع أنظمة كارفور المركزية</li>
+                    <li>قيادة مبادرات الأتمتة والتحول الرقمي</li>
+                    <li>إدارة فريق الدعم الفني</li>
+                    <li>ضمان استمرارية عمل الأنظمة على مدار الساعة</li>
+                    <li>تحليل البيانات الضخمة لتحسين الأداء</li>
+                </ul>
+                <p><strong>4. مدير الجودة والسلامة الغذائية</strong></p>
+                <ul>
+                    <li>ضمان تطبيق معايير سلامة الغذاء العالمية</li>
+                    <li>إدارة فريق فحص الجودة</li>
+                    <li>اعتماد الموردين الجدد من الناحية الفنية</li>
+                    <li>متابعة شهادات الجودة والصلاحية</li>
+                    <li>إدارة حالات سحب المنتجات</li>
+                    <li>الإشراف على معامل فحص الجودة بالمستودع</li>
+                    <li>تطبيق معايير التخزين الصحية</li>
+                </ul>
+                <p><strong>5. مدير المحاسبة والرقابة المالية</strong></p>
+                <ul>
+                    <li>الإشراف على جميع العمليات المالية</li>
+                    <li>ضمان دقة المطابقات المالية مع الموردين</li>
+                    <li>إدارة دورة الإيرادات والمصروفات</li>
+                    <li>إعداد التقارير المالية للإدارة العليا</li>
+                    <li>الإشراف على أنشطة الجرد المالي</li>
+                    <li>مراقبة تكاليف التشغيل وترشيدها</li>
+                </ul>
+
+                <h3>ثانياً: هيكل الإدارات التشغيلية</h3>
+                <h4>أ. إدارة الاستلام والرقابة</h4>
+                <p>تتكون من:</p>
+                <p><strong>1. مدير قسم الاستلام</strong> – يشرف على تخطيط جداول الاستلام اليومية وإدارة الأرصفة، التنسيق مع الموردين، حل مشكلات الشحنات، وتوزيع موارد العمل.</p>
+                <p><strong>2. مشرف الاستلام - الفترة الصباحية</strong> – مسؤول عن استقبال شحنات الصباح وهي الأكبر حجماً.</p>
+                <p><strong>3. مشرف الاستلام - الفترة المسائية</strong> – مسؤول عن الشحنات التي تصل بعد الظهر من الموردين المحليين.</p>
+                <p><strong>4. فريق إدخال بيانات الاستلام</strong> – يتكون من 4-6 موظفين يعملون بنظام الورديات.</p>
+                <p><strong>5. فريق عمال الرصيف والمناولة</strong> – يتكون من 20-30 عاملاً موزعين على الورديات.</p>
+
+                <h4>ب. إدارة فحص ومراقبة الجودة</h4>
+                <p>تعتبر هذه الإدارة حجر الزاوية في ضمان سلامة منتجات كارفور، وتتكون من مدير إدارة الجودة، فريق فحص المنتجات الغذائية الطازجة، فريق فحص المجمدات، فريق فحص المنتجات الجافة والمعلبة، وفريق فحص المنتجات غير الغذائية.</p>
+
+                <h4>ج. إدارة التخزين وتحديد المواقع</h4>
+                <p>تعتبر من أكبر وأهم الإدارات في المستودع الرئيسي، وتشمل مدير عمليات التخزين، مهندس تخطيط المستودع، مشرفي مناطق التخزين المتخصصة (الجاف، المبرد، المجمد، عالية القيمة، المواد الخطرة)، فريق مشغلي الرافعات الشوكية (40-60 مشغلاً)، وفريق مراقبي المخزون (10-12 مراقباً).</p>
+
+                <h4>د. إدارة تحضير الطلبات والتوزيع</h4>
+                <p>قلب العمليات الصادرة من المستودع، وتشمل مدير عمليات التوزيع، مخطط الأحمال، مشرفي مناطق الانتقاء، فريق العمال المتنقلين (80-120 عاملاً)، فريق المراجعين والمدققين، وفريق التعبئة والتجهيز النهائي.</p>
+
+                <h4>هـ. إدارة أسطول النقل والتوزيع</h4>
+                <p>تشمل مدير النقل والتوزيع، منسق أول لعمليات التوزيع اليومية، فريق السائقين (50-70 سائقاً)، فريق مساعدي السائقين، ومهندس صيانة الأسطول.</p>
+
+                <h4>و. إدارة المرتجعات وتصحيح المخزون</h4>
+                <p>إدارة حساسة تتعامل مع المنتجات المعادة من الفروع، وتشمل مدير إدارة المرتجعات، مشرف استلام المرتجعات، فريق فحص المرتجعات، فريق معالجة المرتجعات، ومنسق المرتجعات مع الموردين.</p>
+
+                <!-- NEW: RACI Matrix -->
+                <h3>مصفوفة RACI للعمليات الرئيسية</h3>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>العملية</th><th>مدير المستودع</th><th>مدير الاستلام</th><th>مدير الجودة</th><th>مدير التوزيع</th><th>المحاسبة</th><th>فريق العمليات</th></tr>
+                        <tr><td><strong>الاستلام</strong></td><td>A</td><td>R</td><td>C</td><td>I</td><td>I</td><td>R</td></tr>
+                        <tr><td><strong>فحص الجودة والرفض</strong></td><td>A</td><td>C</td><td>R</td><td>I</td><td>I</td><td>C</td></tr>
+                        <tr><td><strong>التحويلات الداخلية</strong></td><td>A</td><td>I</td><td>I</td><td>R</td><td>I</td><td>R</td></tr>
+                        <tr><td><strong>الجرد الدوري</strong></td><td>A</td><td>C</td><td>I</td><td>C</td><td>R</td><td>R</td></tr>
+                        <tr><td><strong>المرتجعات</strong></td><td>A</td><td>R</td><td>C</td><td>I</td><td>R</td><td>R</td></tr>
+                    </table>
+                </div>
+                <p style="font-size:var(--fs-xs); color:var(--text-muted);"><strong>الرمز:</strong> R = مسؤول (Responsible) | A = معتمد (Accountable) | C = استشاري (Consulted) | I = مُبلَّغ (Informed)</p>
+            </section>
+
+            <!-- الباب الثالث : الدورة المستندية الشاملة -->
+            <section id="bab3" class="chapter" aria-labelledby="ch3-heading">
+                <div class="chapter-head">
+                    <h2 id="ch3-heading">الباب الثالث: الدورة المستندية الشاملة لنظام مستودعات كارفور الرئيسية</h2>
+                    <span class="chapter-num">٣</span>
+                </div>
+
+                <!-- TIMELINE FLOW -->
+                <div class="alert-strip">
+                    <i class="fas fa-stream" aria-hidden="true"></i> DOCUMENT CYCLE TIMELINE — تدفق الدورة المستندية الكاملة
+                </div>
+                <div class="timeline-flow" aria-label="الجدول الزمني للدورة المستندية">
+                    <div class="timeline-step active">
+                        <span class="step-icon"><i class="fas fa-cart-plus" aria-hidden="true"></i></span>
+                        <span class="step-num">01</span>
+                        <span class="step-label">طلب الشراء PR</span>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="step-icon"><i class="fas fa-file-contract" aria-hidden="true"></i></span>
+                        <span class="step-num">02</span>
+                        <span class="step-label">أمر الشراء PO</span>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="step-icon"><i class="fas fa-truck-loading" aria-hidden="true"></i></span>
+                        <span class="step-num">03</span>
+                        <span class="step-label">إشعار الشحن ASN</span>
+                    </div>
+                    <div class="timeline-step active">
+                        <span class="step-icon"><i class="fas fa-clipboard-check" aria-hidden="true"></i></span>
+                        <span class="step-num">04</span>
+                        <span class="step-label">الاستلام وفحص الجودة</span>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="step-icon"><i class="fas fa-warehouse" aria-hidden="true"></i></span>
+                        <span class="step-num">05</span>
+                        <span class="step-label">التخزين الموجه</span>
+                    </div>
+                    <div class="timeline-step active">
+                        <span class="step-icon"><i class="fas fa-boxes" aria-hidden="true"></i></span>
+                        <span class="step-num">06</span>
+                        <span class="step-label">تحضير الطلبات</span>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="step-icon"><i class="fas fa-shipping-fast" aria-hidden="true"></i></span>
+                        <span class="step-num">07</span>
+                        <span class="step-label">الشحن والتوزيع</span>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="step-icon"><i class="fas fa-undo-alt" aria-hidden="true"></i></span>
+                        <span class="step-num">08</span>
+                        <span class="step-label">المرتجعات</span>
+                    </div>
+                </div>
+
+                <p><strong>المقدمة: أهمية الدورة المستندية في نظام كارفور</strong></p>
+                <p>تمثل الدورة المستندية العمود الفقري للنظام الرقابي في مستودعات كارفور الرئيسية. إنها ليست مجرد أوراق يتم تداولها، بل هي نظام متكامل يضمن:</p>
+                <ol>
+                    <li>الرقابة المالية: تمنع التلاعب والسرقة من خلال توثيق كل حركة للمخزون</li>
+                    <li>الشفافية التشغيلية: تجعل كل عملية قابلة للتتبع والمراجعة في أي وقت</li>
+                    <li>المساءلة القانونية: تحدد المسؤول عن كل مرحلة من مراحل حركة البضائع</li>
+                    <li>تدقيق الحسابات: توفر سجلاً كاملاً يمكن للمدققين الخارجيين الاعتماد عليه</li>
+                    <li>تحسين الأداء: تمكن من قياس كفاءة العمليات وتحليل أسباب المشكلات</li>
+                </ol>
+
+                <div class="box">
+                    <strong>المبدأ الأساسي: لا حركة بدون مستند</strong><br>
+                    القاعدة الذهبية في مستودعات كارفور هي: لا يتم تحريك أي صنف، أياً كانت قيمته أو حجمه، بدون مستند رسمي معتمد يبرر هذه الحركة ويوضح تفاصيلها.<br>
+                    هذا المبدأ يطبق على جميع أنواع الحركات: استلام بضائع من الموردين، نقل بضائع بين مناطق التخزين المختلفة، صرف بضائع لتجهيز طلبات الفروع، إرجاع بضائع من الفروع، التخلص من بضائع تالفة أو منتهية الصلاحية.
+                </div>
+
+                <h3>المرحلة الأولى: دورة التعاقد والطلب (Procurement & Ordering Cycle)</h3>
+                <h4>المستند الأول: طلب الشراء (Purchase Requisition - PR)</h4>
+                <p><strong>التعريف والغرض:</strong> طلب الشراء هو مستند داخلي يصدر من نظام إدارة المخزون (WMS) أو نظام تخطيط موارد المؤسسة (ERP) في كارفور بشكل آلي عندما يصل رصيد صنف معين إلى "نقطة إعادة الطلب" (Reorder Point).</p>
+                <p><strong>مكونات طلب الشراء:</strong> رقم طلب الشراء، تاريخ ووقت الإصدار، بيانات الصنف المطلوب (SKU)، الكمية المطلوبة، الموردون المعتمدون، آخر سعر شراء، مستوى المخزون الحالي، المخزون المرتبط.</p>
+
+                <h4>المستند الثاني: أمر الشراء (Purchase Order - PO)</h4>
+                <p><strong>التعريف والغرض:</strong> أمر الشراء هو المستند الرسمي القانوني الذي يصدر من كارفور إلى المورد، ويمثل التزاماً تعاقدياً بشراء كمية محددة من منتجات محددة بسعر محدد ووفق شروط تسليم محددة.</p>
+                <p><strong>مكونات أمر الشراء التفصيلية:</strong> البيانات التعريفية (رقم PO، تاريخ الإصدار، تاريخ التسليم، شروط Incoterms)، بيانات الطرفين، بنود أمر الشراء، القيمة الإجمالية، الشروط والأحكام (العمر الافتراضي المتبقي 75%، شروط التغليف، نافذة التسليم، شروط الدفع 60 يوم من GRN).</p>
+
+                <h4>المستند الثالث: إشعار الشحن المسبق (Advanced Shipping Notice - ASN)</h4>
+                <p><strong>التعريف والغرض:</strong> إشعار الشحن المسبق هو مستند إلكتروني يرسله المورد إلى المستودع الرئيسي لكارفور بمجرد شحن البضاعة من مخازنه أو مصنعه. الغرض منه هو إبلاغ المستودع بتفاصيل الشحنة القادمة وموعد وصولها المتوقع.</p>
+
+                <h3>المرحلة الثانية: دورة الاستلام والرقابة (Receiving & Quality Control)</h3>
+                <h4>المستند الأول: مذكرة التسليم (Delivery Note / Waybill)</h4>
+                <p><strong>التعريف والغرض:</strong> مذكرة التسليم هي المستند الذي يحمله سائق الشاحنة مع البضائع عند وصولها إلى المستودع. تختلف عن أمر الشراء في أنها تمثل البضائع المشحونة فعلاً وليس المطلوبة.</p>
+
+                <h4>المستند الثاني: تقرير فحص الجودة (Quality Inspection Report)</h4>
+                <p><strong>التعريف والغرض:</strong> هذا المستند يصدر عن فريق فحص الجودة في كارفور بعد فحص الشحنة فحصاً مادياً دقيقاً. وهو الذي يحدد مصير الشحنة: قبول كامل، قبول جزئي، أو رفض كامل.</p>
+
+                <!-- NEW: Acceptance/Rejection Criteria -->
+                <h4>معايير القبول والرفض الرقمية (Acceptance / Rejection Criteria)</h4>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>المعيار</th><th>الحد المقبول</th><th>الإجراء عند التجاوز</th></tr>
+                        <tr><td>نسبة التلف الظاهر في الشحنة</td><td>≤ 3% من إجمالي الوحدات</td><td>رفض الكمية المتضررة + فتح تحقيق مع المورد</td></tr>
+                        <tr><td>سلامة التغليف</td><td>≥ 95% من الوحدات سليمة التغليف</td><td>رفض الوحدات غير المطابقة وإصدار تقرير عدم مطابقة</td></tr>
+                        <tr><td>العمر الافتراضي المتبقي</td><td>≥ 75% من العمر الكلي للمنتج</td><td>رفض الشحنة كاملةً للمنتجات الغذائية</td></tr>
+                        <tr><td>درجة حرارة المنتج المبرد عند الاستلام</td><td>≤ 4°م</td><td>رفض كامل للشحنة (CCP 1)</td></tr>
+                        <tr><td>درجة حرارة المنتج المجمد عند الاستلام</td><td>≤ -18°م</td><td>رفض كامل للشحنة (CCP 1)</td></tr>
+                        <tr><td>مطابقة باركود GTIN</td><td>100% تطابق مع ASN</td><td>حجر الشحنة حتى التحقق اليدوي</td></tr>
+                    </table>
+                </div>
+                <p><strong>سياسة القبول الجزئي:</strong> يُسمح بالقبول الجزئي للشحنة إذا كانت نسبة الرفض ≤ 10% من إجمالي الشحنة. يتم إصدار GRN للكمية المقبولة فقط، ويُصدر تقرير عدم مطابقة (NCR) للكمية المرفوضة. تُخصم القيمة تلقائياً من الفاتورة عبر مذكرة خصم (Credit Note) مرتبطة برقم GRN الأصلي.</p>
+
+                <h4>المستند الثالث: مذكرة استلام البضائع (Goods Received Note - GRN)</h4>
+                <p><strong>التعريف والغرض:</strong> مذكرة استلام البضائع هي أهم مستند في دورة المستودعات على الإطلاق. إنها تمثل الإقرار الرسمي من كارفور باستلام البضائع ودخولها في عهدتها ومسؤوليتها.</p>
+
+                <h3>المرحلة الثالثة: دورة التخزين والتحويل الداخلي</h3>
+                <h4>المستند الأول: قائمة التخزين الموجه (Directed Put-away List)</h4>
+                <p><strong>التعريف والغرض:</strong> قائمة التخزين الموجه هي مستند يصدر من نظام إدارة المستودعات (WMS) فور الانتهاء من GRN. يعطي هذا المستند تعليمات دقيقة لمشغلي الرافعات الشوكية والعمال حول أين يجب وضع كل طبلية.</p>
+
+                <h4>المستند الثاني: إذن التحويل الداخلي (Internal Transfer Note)</h4>
+                <p>يستخدم لنقل البضائع من منطقة تخزين إلى أخرى داخل المستودع. أنواع التحويلات: Bulk to Pick، Consolidation، Re-slotting، Zone Clearing.</p>
+
+                <h4>المستند الثالث: محضر الجرد الدوري (Cycle Count Sheet)</h4>
+                <p><strong>استراتيجية الجرد الدوري (تحليل ABC):</strong> الفئة A (قيمة عالية ودوران سريع) أسبوعي، الفئة B شهري، الفئة C ربع سنوي.</p>
+
+                <h3>المرحلة الرابعة: دورة تحضير الطلبات والتوزيع</h3>
+                <h4>المستند الأول: طلب توريد المتجر (Store Requisition Order)</h4>
+                <p>يصدره مدير فرع كارفور لطلب تجديد مخزونه من المستودع الرئيسي. أنواع الطلبات: طلب التجديد الآلي (80%)، طلب المناسبات، الطلب الطارئ.</p>
+
+                <h4>المستند الثاني: قائمة تحضير الطلبات (Picking List)</h4>
+                <p>تطبق قاعدة FEFO: "ما ينتهي أولاً يخرج أولاً" (First Expired First Out) مع المنتجات الغذائية.</p>
+
+                <h4>المستند الثالث: قائمة التعبئة (Packing Slip)</h4>
+                <p>تفصيل محتويات كل صندوق أو طبلية يتم شحنها إلى الفرع.</p>
+
+                <h4>المستند الرابع: إذن خروج البضاعة (Delivery Note / Outbound Advice)</h4>
+                <p>المستند الرسمي الذي يثبت خروج البضائع من عهدة المستودع الرئيسي ودخولها مرحلة النقل إلى الفرع.</p>
+
+                <!-- NEW: Outbound Checklist -->
+                <h4>قائمة تدقيق الشحن الصادر (Outbound Checklist)</h4>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>#</th><th>عنصر التدقيق</th><th>المسؤول</th><th>الحالة</th></tr>
+                        <tr><td>1</td><td>التحقق من مطابقة الكميات المشحونة لقائمة التعبئة</td><td>مدقق الشحن</td><td>☐</td></tr>
+                        <tr><td>2</td><td>فحص درجة حرارة الشاحنة قبل التحميل (للمبردات ≤ 4°م / للمجمدات ≤ -18°م)</td><td>مشرف الجودة</td><td>☐</td></tr>
+                        <tr><td>3</td><td>التحقق من سلامة أختام الشاحنة (Truck Seals) وتوثيق أرقامها</td><td>مشرف الأمن</td><td>☐</td></tr>
+                        <tr><td>4</td><td>التأكد من وثائق السائق (رخصة قيادة سارية + تصريح نقل مواد غذائية)</td><td>منسق النقل</td><td>☐</td></tr>
+                        <tr><td>5</td><td>تسجيل توقيت خروج الشاحنة الفعلي (Dispatch Timestamp) في WMS</td><td>مشرف الرصيف</td><td>☐</td></tr>
+                    </table>
+                </div>
+
+                <h3>المرحلة الخامسة: دورة المرتجعات (Reverse Logistics)</h3>
+                <h4>المستند الأول: إذن مرتجع مخزني (Goods Return Note)</h4>
+                <p>يصدره الفرع لإعادة بضائع غير قابلة للبيع إلى المستودع الرئيسي.</p>
+
+                <!-- NEW: Returns Process Expansion -->
+                <h4>تصنيف المرتجعات وإجراءاتها (Returns Categorization)</h4>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>الفئة</th><th>الوصف</th><th>الإجراء</th><th>المستندات المطلوبة</th></tr>
+                        <tr><td><strong>قابلة لإعادة البيع (Resalable)</strong></td><td>منتج سليم، تغليف ممتاز، صلاحية ≥ 75%</td><td>إعادتها للمخزون النشط بعد فحص الجودة</td><td>GRN مرتجعات + تقرير فحص</td></tr>
+                        <tr><td><strong>إرجاع للمورد (Return to Vendor)</strong></td><td>منتج به عيب تصنيعي أو مخالف للمواصفات</td><td>نقلها لمنطقة RTV وإصدار Credit Note</td><td>RTV Form + Credit Note + صورة العيب</td></tr>
+                        <tr><td><strong>حجر صحي (Quarantine)</strong></td><td>منتج مشتبه فيه (حرارة، صلاحية، تلوث)</td><td>وضعه في منطقة الحجر حتى قرار مدير الجودة</td><td>تقرير فحص + إذن حجر نظامي</td></tr>
+                        <tr><td><strong>إتلاف (Disposal)</strong></td><td>منتج تالف أو منتهي الصلاحية أو ملوث</td><td>إتلاف آمن وفق إجراءات البيئة + توثيق</td><td>إذن إتلاف + شهادة إتلاف + صور</td></tr>
+                    </table>
+                </div>
+                <h4>المستند الثاني: مذكرة خصم (Credit Note)</h4>
+                <p>المستند المحاسبي الذي يتم إصداره لتسوية قيمة المرتجعات.</p>
+            </section>
+
+            <!-- الباب الرابع : الربط مع نظام ERP -->
+            <section id="bab4" class="chapter" aria-labelledby="ch4-heading">
+                <div class="chapter-head">
+                    <h2 id="ch4-heading">الباب الرابع: الربط مع نظام ERP وإجراءات التشغيل القياسية الموحدة (SOP)</h2>
+                    <span class="chapter-num">٤</span>
+                </div>
+                <p><strong>الربط التكاملي مع أنظمة المعلومات</strong></p>
+                <p>إن نجاح الدورة المستندية المعقدة الموصوفة أعلاه لا يمكن أن يتحقق بدون نظام معلوماتي قوي يربط جميع العمليات معاً ويضمن دقة البيانات وسرعة تدفقها. في كارفور، النظام المستخدم هو نظام تخطيط موارد المؤسسة (ERP) المتكامل مع نظام إدارة المستودعات (WMS) المتخصص.</p>
+
+                <h3>وحدة إدارة المستودعات (WMS) داخل ERP</h3>
+                <p>يجب أن يغطي نظام WMS الوظائف الأساسية التالية:</p>
+                <ol>
+                    <li><strong>إدارة عمليات الاستلام (Inbound Management)</strong> – جدولة المواعيد، استلام ASN، توجيه البضائع لمنطقة الفحص، تسجيل نتائج فحص الجودة، إصدار GRN وتحديث الأرصدة.</li>
+                    <li><strong>إدارة التخزين ومواقع التخزين (Slotting & Inventory Management)</strong> – خوارزميات ذكية لتحديد الموقع الأمثل، دعم قاعدة FEFO، التحكم في المخزون المحجوز.</li>
+                    <li><strong>إدارة تحضير الطلبات (Order Fulfillment / Picking)</strong> – استلام طلبات التوريد آلياً، تجميع الطلبات في موجات، توليد قوائم التحضير الإلكترونية.</li>
+                    <li><strong>إدارة الشحن والتوزيع (Outbound & Distribution)</strong> – توليد قوائم التعبئة، تدقيق الطلبات المجهزة، إصدار أذونات الخروج.</li>
+                    <li><strong>إدارة المرتجعات (Reverse Logistics)</strong> – تسجيل المرتجعات وربطها بعملية البيع الأصلية.</li>
+                    <li><strong>إدارة التقارير ومؤشرات الأداء (Reporting & KPIs)</strong> – لوحات معلومات تفاعلية للإدارة.</li>
+                </ol>
+
+                <h3>هيكل البيانات المرجعية (Master Data)</h3>
+                <p>لكي يعمل نظام WMS/ERP بفعالية في بيئة كارفور، يجب بناء وتحديث هيكل البيانات المرجعية بدقة متناهية:</p>
+                <ol>
+                    <li><strong>الملف الرئيسي للأصناف (Item Master):</strong> الرقم التعريفي العالمي (GTIN)، رمز SKU الداخلي، الوصف بعدة لغات، الأبعاد والوزن، وحدة القياس الأساسية وعوامل التحويل.</li>
+                    <li><strong>البيانات اللوجستية للأصناف:</strong> متطلبات درجة حرارة التخزين والنقل، المدة القصوى خارج بيئة التخزين، إمكانية التخزين الرأسي، تصنيف المناولة، صلاحية المنتج (75% متبقي عند الاستلام).</li>
+                </ol>
+
+                <div class="box">
+                    <strong>خاتمة تنفيذية</strong><br>
+                    يقدم هذا البحث الموسع والشامل نموذجاً متكاملاً لإدارة المستودعات المركزية وفق أرقى المعايير العالمية التي تطبقها كارفور. النموذج ليس نظرياً بل قابل للتطبيق المباشر، وهو مصمم ليكون مرجعاً تشغيلياً يمكن البناء عليه وتطويره.
+                </div>
+            </section>
+
+            <!-- الباب الخامس : النماذج والمستندات التشغيلية -->
+            <section id="bab5" class="chapter" aria-labelledby="ch5-heading">
+                <div class="chapter-head">
+                    <h2 id="ch5-heading">الباب الخامس: النماذج والمستندات التشغيلية التفصيلية</h2>
+                    <span class="chapter-num">٥</span>
+                </div>
+                <p>في هذا الباب، نقدم النماذج الفعلية التي سيتم استخدامها يوميًا في المستودع الرئيسي. تم تصميم كل نموذج ليكون شاملاً ويغطي جميع المتطلبات القانونية والتشغيلية والرقابية.</p>
+
+                <h3>النموذج رقم (1): أمر الشراء الرسمي - نموذج كارفور (Purchase Order Form)</h3>
+                <p><strong>وصف النموذج:</strong> وثيقة رسمية تصدر من قسم المشتريات المركزية، وتعتبر عقداً ملزماً بين كارفور والمورد.</p>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>#</th><th>رمز SKU</th><th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr>
+                        <tr><td>1</td><td>5449000000996</td><td>حليب كارفور كامل الدسم 1 لتر</td><td>500</td><td>42.00 ر.س</td><td>21,000</td></tr>
+                        <tr><td>2</td><td>5449000001234</td><td>أرز بسمتي كارفور 5 كجم</td><td>1,000</td><td>35.50 ر.س</td><td>35,500</td></tr>
+                    </table>
+                </div>
+                <p>الإجماليات النهائية: المجموع قبل الضريبة 56,500 ر.س، إجمالي الضريبة 8,475 ر.س، القيمة الإجمالية 64,975 ر.س.</p>
+
+                <h3>النموذج رقم (2): مذكرة الاستلام وفحص الجودة (GRN & QC Report Combined)</h3>
+                <p><strong>وصف النموذج:</strong> يجمع هذا النموذج بين وظيفتي تسجيل الكميات المستلمة ونتائج فحص الجودة في مستند واحد.</p>
+
+                <h3>النموذج رقم (3): بطاقة تخزين الطبلية/الموقع (Pallet / Bin Card System)</h3>
+                <pre>
+        ============================================================================
+        |                 كارفور - المستودع الرئيسي    بطاقة مراقبة المخزون (Bin Card)      |
+        |============================================================================|
+        | رمز الموقع: Z03-A14-R07-L03   |  رمز الصنف: 5449000000996  حليب كارفور 1لتر       |
+        | التاريخ  | رقم المستند | وارد | صادر | الرصيد | توقيع |
+        | 2025/04/01| GRN-1223  | 500 | 0   | 500  | ع.م  |
+        ============================================================================
+        | الحد الأدنى للتنبيه: 100 كرتونة   | الحد الأقصى للطلب: 600 كرتونة
+        ============================================================================</pre>
+
+                <h3>النموذج رقم (4): قائمة التحضير والتعبئة (Picking & Packing Slip Combined)</h3>
+                <p><strong>وصف النموذج:</strong> يستخدم من قبل العمال في المستودع لتجميع طلب فرع معين. يحتوي على تفاصيل الموقع لتسريع العملية، وتعليمات خاصة (منتجات مبردة، قابلة للكسر، FEFO).</p>
+            </section>
+
+            <!-- الباب السادس : نموذج محاكاة Excel -->
+            <section id="bab6" class="chapter" aria-labelledby="ch6-heading">
+                <div class="chapter-head">
+                    <h2 id="ch6-heading">الباب السادس: نموذج محاكاة عملي في جداول البيانات (Excel Operational Model)</h2>
+                    <span class="chapter-num">٦</span>
+                </div>
+                <p><strong>مقدمة</strong></p>
+                <p>لتمكين الإدارة من البدء بتطبيق هذا النظام قبل اكتمال مشروع ERP الكبير، أو كأداة تدريبية للموظفين الجدد، نقدم في هذا الباب تصميماً لنظام إدارة مستودعات مبسط باستخدام Microsoft Excel.</p>
+
+                <h3>هيكل ملف Excel المقترح (ملف واحد متعدد الأوراق)</h3>
+                <p><strong>الورقة رقم 1: لوحة التحكم المركزية (Central Dashboard)</strong> – بطاقات معلومات كبيرة، رسوم بيانية (Pareto Chart)، زر تحديث التنبيهات.</p>
+                <p><strong>الورقة رقم 2: الملف الرئيسي للأصناف (Item Master & Inventory Balance)</strong> – قاعدة البيانات المرجعية لجميع الأصناف مع أرصدتها الحية.</p>
+                <p><strong>الورقة رقم 3: سجل أوامر الشراء (Purchase Orders Log)</strong> – رقم PO، تاريخ الإصدار، اسم المورد، الحالة، القيمة الإجمالية.</p>
+                <p><strong>الورقة رقم 4: سجل الاستلام (GRN Log)</strong> – رقم GRN، تاريخ الاستلام، SKU، الكمية المستلمة، المرفوضة.</p>
+                <p><strong>الورقة رقم 5: سجل تحضير الطلبات والصرف (Picking & Dispatch Log)</strong> – رقم طلب الفرع، تاريخ الصرف، الكمية المصروفة.</p>
+                <p><strong>الورقة رقم 6: نماذج الطباعة الجاهزة (Printable Forms)</strong> – تسهيل طباعة المستندات الورقية الضرورية.</p>
+            </section>
+
+            <!-- الباب السابع : مؤشرات الأداء الرئيسية ولوحات التحكم -->
+            <section id="bab7" class="chapter" aria-labelledby="ch7-heading">
+                <div class="chapter-head">
+                    <h2 id="ch7-heading">الباب السابع: مؤشرات الأداء الرئيسية ولوحات التحكم (KPIs & Dashboards)</h2>
+                    <span class="chapter-num">٧</span>
+                </div>
+
+                <!-- GAUGE DASHBOARD -->
+                <div class="alert-strip">
+                    <i class="fas fa-tachometer-alt" aria-hidden="true"></i> LIVE EFFICIENCY GAUGES — قراءات مؤشرات الأداء الحيوية
+                </div>
+                <div class="gauge-dashboard" aria-label="لوحة مؤشرات الأداء">
+                    <div class="gauge-card nominal">
+                        <div class="gauge-ring"><span class="gauge-value">98.7%</span></div>
+                        <div class="gauge-label">دقة المخزون</div>
+                        <small style="color:#FFD700;">الهدف: ≥ 98.5% ✓</small>
+                    </div>
+                    <div class="gauge-card warning">
+                        <div class="gauge-ring"><span class="gauge-value">0.72%</span></div>
+                        <div class="gauge-label">نسبة التالف</div>
+                        <small style="color:#FF4500;">الهدف: &lt; 0.8% ⚠</small>
+                    </div>
+                    <div class="gauge-card optimal">
+                        <div class="gauge-ring"><span class="gauge-value">3.2h</span></div>
+                        <div class="gauge-label">زمن دورة الطلب</div>
+                        <small style="color:#00e676;">الهدف: &lt; 4 ساعات ✓</small>
+                    </div>
+                    <div class="gauge-card nominal">
+                        <div class="gauge-ring"><span class="gauge-value">97.5%</span></div>
+                        <div class="gauge-label">مستوى خدمة الفروع</div>
+                        <small style="color:#FFD700;">الهدف: ≥ 97% ✓</small>
+                    </div>
+                    <div class="gauge-card warning">
+                        <div class="gauge-ring"><span class="gauge-value">82</span></div>
+                        <div class="gauge-label">إنتاجية العامل CPH</div>
+                        <small style="color:#FF4500;">الهدف: 80-100 ⚠</small>
+                    </div>
+                </div>
+
+                <p>لا يكفي تطبيق النظام، بل يجب قياس أدائه باستمرار لتحديد فرص التحسين. في كارفور، تتم مراقبة هذه المؤشرات بشكل يومي وأسبوعي وشهري.</p>
+
+                <p><strong>المؤشر (1): دقة المخزون (Inventory Accuracy)</strong> – النسبة المئوية للأصناف التي يتطابق رصيدها الدفتري مع الرصيد الفعلي. الهدف العالمي: ≥ 98.5%.</p>
+                <p><strong>المؤشر (2): نسبة التلف والفاقد (Shrinkage Rate)</strong> – قيمة البضائع المفقودة لأسباب مجهولة + قيمة التالف المسجل. الهدف: أقل من 0.8%.</p>
+                <p><strong>المؤشر (3): مدة دورة الطلب الداخلية (Internal Order Cycle Time)</strong> – إجمالي الوقت من استلام طلب الفرع حتى خروج الشاحنة. الهدف: أقل من 4 ساعات.</p>
+                <p><strong>المؤشر (4): إنتاجية العامل (Labor Productivity)</strong> – المعدل الذي يحضر به العامل الأصناف (CPH للكراتين، PPH للطبالي).</p>
+                <p><strong>المؤشر (5): مستوى الخدمة للفروع (Store Service Level - Fill Rate)</strong> – النسبة المئوية لكميات الأصناف المشحونة مقارنة بالكميات المطلوبة. الهدف: ≥ 97%.</p>
+
+                <h3>تصميم لوحة تحكم تفاعلية (Interactive Dashboard)</h3>
+                <p>مكونات لوحة التحكم المقترحة: شريط اختيار الفترة الزمنية (Slicer)، بطاقات ملخصة، رسم بياني للإنتاجية اليومية، خريطة حرارية للمخاطر، جدول الأصناف الأكثر طلباً، جدول أكثر 5 موردين تأخيراً.</p>
+
+                <!-- NEW: KPI Action Framework -->
+                <h3>إطار عمل مؤشرات الأداء — العتبات والإجراءات (KPI Action Framework)</h3>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>المؤشر KPI</th><th>الأخضر (طبيعي)</th><th>الأصفر (تحذير)</th><th>الأحمر (حرج)</th><th>الإجراء عند الأحمر</th><th>المعتمد</th></tr>
+                        <tr>
+                            <td>دقة المخزون</td>
+                            <td class="kpi-threshold-green">≥ 98.5%</td>
+                            <td class="kpi-threshold-yellow">97% – 98.4%</td>
+                            <td class="kpi-threshold-red">&lt; 97%</td>
+                            <td>جرد شامل فوري للفئة A + تحقيق في الأسباب</td>
+                            <td>مدير المستودع التنفيذي</td>
+                        </tr>
+                        <tr>
+                            <td>Fill Rate</td>
+                            <td class="kpi-threshold-green">≥ 97%</td>
+                            <td class="kpi-threshold-yellow">94% – 96.9%</td>
+                            <td class="kpi-threshold-red">&lt; 94%</td>
+                            <td>مراجعة أرصدة الأصناف منخفضة الخدمة + خطة توريد عاجلة</td>
+                            <td>مدير التوزيع</td>
+                        </tr>
+                        <tr>
+                            <td>نسبة التالف</td>
+                            <td class="kpi-threshold-green">&lt; 0.5%</td>
+                            <td class="kpi-threshold-yellow">0.5% – 0.8%</td>
+                            <td class="kpi-threshold-red">&gt; 0.8%</td>
+                            <td>تدقيق عمليات المناولة + مراجعة إجراءات FEFO</td>
+                            <td>مدير الجودة</td>
+                        </tr>
+                        <tr>
+                            <td>زمن دورة الطلب</td>
+                            <td class="kpi-threshold-green">&lt; 3 ساعات</td>
+                            <td class="kpi-threshold-yellow">3 – 4 ساعات</td>
+                            <td class="kpi-threshold-red">&gt; 4 ساعات</td>
+                            <td>تحليل اختناقات التدفق + إعادة توزيع الموارد</td>
+                            <td>مدير العمليات</td>
+                        </tr>
+                        <tr>
+                            <td>إنتاجية CPH</td>
+                            <td class="kpi-threshold-green">90 – 110</td>
+                            <td class="kpi-threshold-yellow">80 – 89</td>
+                            <td class="kpi-threshold-red">&lt; 80</td>
+                            <td>تدريب إضافي + مراجعة طرق الانتقاء</td>
+                            <td>مشرف المنطقة</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+
+            <!-- الباب الثامن : إجراءات الطوارئ -->
+            <section id="bab8" class="chapter" aria-labelledby="ch8-heading">
+                <div class="chapter-head">
+                    <h2 id="ch8-heading">الباب الثامن: إجراءات الطوارئ والتعامل مع الأزمات (Emergency & Crisis SOPs)</h2>
+                    <span class="chapter-num">٨</span>
+                </div>
+                <p>حتى أفضل الأنظمة عرضة للاضطرابات. هذا الباب يضع إجراءات واضحة للتعامل مع الحالات غير الطبيعية.</p>
+
+                <div class="alert-strip">
+                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i> CRITICAL ALERT PROTOCOLS — بروتوكولات الطوارئ الحرجة
+                </div>
+
+                <h3>1. انقطاع التيار الكهربائي (Power Outage)</h3>
+                <p><strong>التأثير:</strong> توقف أنظمة التبريد، توقف نظام WMS الإلكتروني، توقف الإضاءة.</p>
+                <p><strong>الإجراء التشغيلي الموحد (SOP):</strong></p>
+                <ul>
+                    <li><strong>الدقيقة 0-5:</strong> إعلان حالة الطوارئ "الرمز الأحمر"، بدء تشغيل المولد الاحتياطي، فتح أبواب غرف التبريد فقط للضرورة القصوى.</li>
+                    <li><strong>أول 15 دقيقة:</strong> الانتقال إلى الوضع اليدوي (نماذج GRN ورقية، قوائم تحضير ورقية)، وضع "سجل العمليات أثناء انقطاع التيار".</li>
+                    <li><strong>بعد عودة التيار:</strong> إدخال كافة الحركات المسجلة إلى WMS، فحص درجات حرارة جميع الغرف، تحويل المنتجات المتأثرة لمنطقة الحجر الصحي.</li>
+                </ul>
+
+                <!-- NEW: Security & Risk Section -->
+                <h3>الأمن والسلامة وإدارة المخاطر (Security & Risk Management)</h3>
+                <h4>التعامل مع المنتجات عالية القيمة</h4>
+                <ul>
+                    <li>تخزينها في منطقة مؤمَّنة مستقلة (Cage) بجدران شبكية تصل للسقف.</li>
+                    <li>تسجيل دخول/خروج كل شخص إلى المنطقة بكاميرات CCTV مع بصمة زمنية.</li>
+                    <li>الجرد اليومي الإلزامي لهذه المنتجات معتمد من مشرف الأمن ومدير المحاسبة.</li>
+                    <li>أي نقص يُبلَّغ عنه فوراً كـ "حادث أمني" ويُفتح تحقيق خلال ساعة.</li>
+                </ul>
+                <h4>التحكم في الوصول (Access Control)</h4>
+                <ul>
+                    <li>نظام بطاقات ذكية (Badge System) يحدد المناطق المسموح بها لكل موظف.</li>
+                    <li>تسجيل دخول وخروج إلزامي عند بوابات الموظفين.</li>
+                    <li>زوار المستودع: بطاقة زائر مؤقتة + مرافقة إلزامية طوال فترة التواجد.</li>
+                </ul>
+                <h4>كاميرات المراقبة (CCTV)</h4>
+                <ul>
+                    <li>تغطية 100% لجميع مناطق الاستلام، التخزين، الانتقاء، الشحن، والبوابات.</li>
+                    <li>تسجيل مستمر 24/7 مع أرشفة لمدة 90 يوماً كحد أدنى.</li>
+                    <li>مراجعة أسبوعية عشوائية للتسجيلات من قبل مشرف الأمن.</li>
+                </ul>
+                <h4>أختام الشاحنات (Truck Seals)</h4>
+                <ul>
+                    <li>جميع الشاحنات الصادرة تُختَم بأختام أمان مرقمة (Serialized Seals).</li>
+                    <li>رقم الختم يُسجَّل في WMS ويُرسَل للفرع المستلم عبر ASN.</li>
+                    <li>الفرع يتحقق من رقم الختم قبل فتح الشاحنة ولا يقبل أي شاحنة مكسورة الختم.</li>
+                </ul>
+                <h4>فصل الواجبات (Segregation of Duties)</h4>
+                <ul>
+                    <li>الموظف الذي يستلم البضاعة ليس هو نفسه من يدخل البيانات في WMS.</li>
+                    <li>الموظف الذي يعِدّ الطلب ليس هو نفسه من يدققه.</li>
+                    <li>الموظف الذي يأذن بالإتلاف ليس هو نفسه من ينفذ الإتلاف.</li>
+                </ul>
+
+                <h3>2. فشل كبير في نظام WMS / ERP (System Outage)</h3>
+                <p><strong>التأثير:</strong> توقف تام لعمليات المسح الإلكتروني وتحديث البيانات.</p>
+                <p><strong>الإجراء:</strong> منع أي عملية مناولة بدون توثيق ورقي صريح، سحب "حقيبة الطوارئ الإجرائية" (حقيبة حمراء)، أي طبلية يتم التعامل معها بدون نظام يتم لصق "ملصق تتبع أحمر" عليها.</p>
+            </section>
+
+            <!-- الباب التاسع : التوافق مع المعايير الدولية -->
+            <section id="bab9" class="chapter" aria-labelledby="ch9-heading">
+                <div class="chapter-head">
+                    <h2 id="ch9-heading">الباب التاسع: التوافق مع المعايير الدولية لسلامة الغذاء (ISO 22000 & HACCP)</h2>
+                    <span class="chapter-num">٩</span>
+                </div>
+
+                <h3>تطبيق نظام HACCP في المستودع</h3>
+                <p><strong>نقطة تحكم حرجة رقم 1: استلام المنتجات المبردة والمجمدة (CCP 1 - Receiving)</strong></p>
+                <ul>
+                    <li>الخطر: تكاثر البكتيريا بسبب كسر سلسلة التبريد.</li>
+                    <li>الحد الحرج: درجة حرارة المنتج ≤ 4°م للمبردات، ≤ -18°م للمجمدات.</li>
+                    <li>الإجراء التصحيحي: إذا تجاوزت الحرارة الحد الحرج، ترفض الشحنة بالكامل.</li>
+                </ul>
+
+                <p><strong>نقطة تحكم حرجة رقم 2: التخزين في غرف التبريد والتجميد (CCP 2 - Cold Storage)</strong></p>
+                <ul>
+                    <li>الخطر: تعطل معدات التبريد وارتفاع درجة الحرارة دون اكتشاف.</li>
+                    <li>إجراء المراقبة: نظام مراقبة آلي على مدار 24 ساعة (مجسات رقمية، إنذار صوتي وضوئي، تنبيهات SMS).</li>
+                    <li>إجراءات التحقق: معايرة المجسات نصف سنوية، اختبار محاكاة عطل كل 3 أشهر.</li>
+                </ul>
+
+                <p><strong>نقطة تحكم حرجة رقم 3: إدارة المواد المسببة للحساسية (CCP 3 - Allergen Management)</strong></p>
+                <ul>
+                    <li>الخطر: تلوث منتج خالٍ من مادة مسببة للحساسية ببقايا منتج آخر.</li>
+                    <li>إجراءات المراقبة: سياسة الفصل الصارمة (أرفف مخصصة بالألوان)، تنظيف أنزيمي متبوعاً باختبار مسحة بروتينية.</li>
+                </ul>
+
+                <h3>البرامج التمهيدية (PRPs) المطبقة</h3>
+                <p><strong>1. برنامج مكافحة الآفات المتكامل (IPM):</strong> تعاقد سنوي مع شركة عالمية معتمدة، خريطة محدثة لمحطات الطعوم، أي حشرة أو قارض يستدعي إيقاف جميع العمليات في المنطقة المعزولة فوراً.</p>
+                <p><strong>2. برنامج إدارة النظافة والتعقيم:</strong> جدول التنظيف الرئيسي (MCS)، سياسة الانسكابات: عزل المنطقة فوراً، تنظيف كيميائي مناسب.</p>
+
+                <h3>التكامل مع ISO 22000</h3>
+                <p><strong>إجراء تتبع المنتج وسحبه (Traceability & Recall):</strong></p>
+                <ul>
+                    <li><strong>التتبع الأمامي:</strong> بإدخال رقم تشغيلة Batch/Lot Number في WMS، يعرض النظام فوراً تاريخ الاستلام، الموقع الحالي، والفروع التي استلمتها.</li>
+                    <li><strong>إجراء الحجر والسحب:</strong> وضع المنتج في حالة "حجر نظامي"، سحب الكميات إلى منطقة الحجر الصحي الفعلية، إرسال إشعار عاجل لجميع الفروع.</li>
+                </ul>
+            </section>
+
+            <!-- الباب العاشر : البرنامج التدريبي -->
+            <section id="bab10" class="chapter" aria-labelledby="ch10-heading">
+                <div class="chapter-head">
+                    <h2 id="ch10-heading">الباب العاشر: البرنامج التدريبي للعاملين في المستودعات المركزية</h2>
+                    <span class="chapter-num">١٠</span>
+                </div>
+                <p>إن أفضل نظام في العالم مع أفضل إجراءات مكتوبة لن ينجح إذا لم يتم تدريب الموظفين الذين ينفذونه. في كارفور، يعتبر الاستثمار في تدريب العمالة الأساس لتحقيق التميز التشغيلي.</p>
+
+                <!-- HEATMAP: Training Matrix -->
+                <div class="table-scroll-wrapper">
+                    <table class="heatmap">
+                        <tr><th>المستوى</th><th>الفئة المستهدفة</th><th>المسار التدريبي</th><th>المدة الأولية</th><th>تجديد الشهادة</th></tr>
+                        <tr><td>المستوى التأسيسي</td><td>جميع العمال الجدد</td><td>التوجيه العام، الصحة والسلامة الأساسية</td><td class="heat-low">3 أيام</td><td class="heat-low">سنوياً</td></tr>
+                        <tr><td>المستوى التشغيلي</td><td>العمال المباشرين</td><td>تشغيل معدات المناولة، SOP، استخدام WMS</td><td class="heat-medium">5 أيام</td><td class="heat-medium">كل سنتين</td></tr>
+                        <tr><td>المستوى التخصصي</td><td>المشرفون وقادة الفرق</td><td>القيادة، HACCP مستوى 3، WMS متقدم</td><td class="heat-high">10 أيام</td><td class="heat-high">كل 3 سنوات</td></tr>
+                        <tr><td>المستوى الإداري</td><td>مديرو الإدارات</td><td>Lean Warehousing، Six Sigma، إدارة الأزمات</td><td class="heat-critical">ورش ربع سنوية</td><td class="heat-critical">مستمر</td></tr>
+                    </table>
+                </div>
+
+                <p><strong>مصفوفة المهارات / التراخيص الإلزامية (Skills Matrix)</strong></p>
+                <p>لا يسمح لأي شخص بالعمل على أي مهمة إلا بعد توقيع المشرف المباشر على "تفويض العمل (Work Authorization)".</p>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>المهمة</th><th>شهادة / ترخيص مطلوب</th><th>تاريخ الحصول</th><th>تاريخ الانتهاء</th></tr>
+                        <tr><td>تشغيل رافعة شوكية مقابلة</td><td>رخصة هيئة السلامة الوطنية</td><td>01/01/2024</td><td>01/01/2027</td></tr>
+                        <tr><td>تشغيل رافعة وصولية</td><td>دورة داخلية متقدمة</td><td>01/03/2024</td><td>01/03/2026</td></tr>
+                        <tr><td>العمل داخل غرفة التجميد (-22°)</td><td>تصريح طبي + تدريب خاص</td><td>15/12/2023</td><td>15/12/2024</td></tr>
+                    </table>
+                </div>
+            </section>
+
+            <!-- الباب الحادي عشر : ملاحق تطبيقية -->
+            <section id="bab11" class="chapter" aria-labelledby="ch11-heading">
+                <div class="chapter-head">
+                    <h2 id="ch11-heading">الباب الحادي عشر: ملاحق تطبيقية جاهزة للاستخدام (Operational Appendices)</h2>
+                    <span class="chapter-num">١١</span>
+                </div>
+                <p>هذا الباب الأخير يحتوي على أدوات عملية جاهزة تطبيقها فوراً إلى جانب النموذج المثالي الموصوف في هذا البحث.</p>
+
+                <h3>الملحق (أ): قائمة تدقيق أسبوعية للمشرفين (Weekly Supervisor Gemba Walk Checklist)</h3>
+                <p><strong>الغرض:</strong> قائمة موحدة يستخدمها المشرفون عند القيام بجولاتهم الميدانية اليومية "Gemba Walk".</p>
+                <p>نموذج مبسط (نقطة واحدة = 1، لا = 0):</p>
+                <ul>
+                    <li>السلامة والصحة المهنية: ممرات الطوارئ خالية، طفايات الحريق في أماكنها، العمال يرتدون مهمات الوقاية الشخصية.</li>
+                    <li>سلامة الغذاء والنظافة (5S): منطقة الاستلام نظيفة، أبواب غرف التبريد مغلقة بإحكام، لا منتجات مخزنة على الأرض.</li>
+                    <li>الجودة والإجراءات: تم فحص درجة حرارة شاحنات التبريد الواردة، الشحنات المرفوضة نُقلت لمنطقة الرفض.</li>
+                </ul>
+                <p>إجمالي النقاط (من 10). نقاط أقل من 7 تتطلب خطة عمل تصحيحية فورية من المشرف قبل نهاية اليوم.</p>
+
+                <h3>الملحق (ب): نموذج محضر اجتماع الصباح اليومي (Daily Huddle Meeting Template)</h3>
+                <p><strong>مدة الاجتماع:</strong> 10-15 دقيقة كحد أقصى في بداية كل وردية.</p>
+                <p><strong>جدول الأعمال الثابت:</strong></p>
+                <ol>
+                    <li><strong>السلامة أولاً (دقيقتان):</strong> مشاركة سريعة لموقف أو ملاحظة سلامة من اليوم السابق.</li>
+                    <li><strong>أداء الأمس (3 دقائق):</strong> عرض سريع للوحة النتائج.</li>
+                    <li><strong>تحديات اليوم (5 دقائق):</strong> جدول الاستلامات المتوقعة، عدد الشاحنات، الطلبات العاجلة.</li>
+                    <li><strong>التقدير والتحفيز (دقيقتان):</strong> الإعلان عن اسم "موظف الوردية".</li>
+                    <li><strong>السؤال الختامي:</strong> "هل من أحد لديه ما يمنعه من بدء العمل بأمان وكفاءة؟"</li>
+                </ol>
+
+                <!-- NEW: System/Power Outage Log Template -->
+                <h3>الملحق (ج): سجل انقطاع التيار / فشل الأنظمة (Power/System Outage Log)</h3>
+                <div class="table-scroll-wrapper">
+                    <table>
+                        <tr><th>التاريخ</th><th>وقت البداية</th><th>وقت العودة</th><th>المدة</th><th>النوع</th><th>المناطق المتأثرة</th><th>الإجراء المتخذ</th><th>توقيع المشرف</th></tr>
+                        <tr><td>____/____/20__</td><td>__:__</td><td>__:__</td><td>___ دقيقة</td><td>☐ تيار كهربائي ☐ نظام WMS ☐ تبريد</td><td></td><td>☐ مولد ☐ وضع يدوي ☐ حجر منتجات</td><td></td></tr>
+                        <tr><td>____/____/20__</td><td>__:__</td><td>__:__</td><td>___ دقيقة</td><td>☐ تيار كهربائي ☐ نظام WMS ☐ تبريد</td><td></td><td>☐ مولد ☐ وضع يدوي ☐ حجر منتجات</td><td></td></tr>
+                        <tr><td>____/____/20__</td><td>__:__</td><td>__:__</td><td>___ دقيقة</td><td>☐ تيار كهربائي ☐ نظام WMS ☐ تبريد</td><td></td><td>☐ مولد ☐ وضع يدوي ☐ حجر منتجات</td><td></td></tr>
+                    </table>
+                </div>
+                <p><strong>تعليمات الاستخدام:</strong> يُملأ هذا السجل فوراً أثناء أي انقطاع. بعد عودة التيار/النظام، يُسجَّل وقت العودة الفعلي. يُرفع السجل لمدير المستودع خلال 24 ساعة للمراجعة.</p>
+
+                <div class="footer-end">
+                    <i class="fas fa-check-circle" style="color:#00e676; font-size:2.2rem;" aria-hidden="true"></i>
+                    <p>النموذج التشغيلي المتكامل لمستودعات كارفور والبرندات الرئيسية – المرجعية الكاملة</p>
+                    <p style="color:var(--orange-aggressive);">إعداد: محمد إبراهيم البرشي | للمدراء المباشرين وكل من يهمه الأمر في هذه العمليات المخزنية</p>
+                    <a href="#" onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;" aria-label="العودة إلى أعلى الصفحة"><i class="fas fa-arrow-up" aria-hidden="true"></i> العودة إلى الأعلى</a>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Inline script for PDF download placeholder (production-ready hook) -->
+    <script>
+        // Placeholder: hook for PDF generation service
+        document.querySelector('.pdf-download-btn')?.addEventListener('click', function(e) {
+            // In production, replace with actual PDF generation logic
+            console.log('PDF download requested — integrate with pdfmake, jsPDF, or server-side rendering.');
+        });
+    </script>
+</body>
+</html>
