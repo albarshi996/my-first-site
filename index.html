@@ -620,10 +620,13 @@ textarea.inp{resize:vertical}
             <div style="grid-column:1/-1">
               <label class="lbl">نص OCR / محتوى الوثيقة (للبحث الداخلي)</label>
               <div style="position:relative">
-                <textarea id="fOcr" class="inp" rows="4" placeholder="الصقت نص مستخرج من OCR أو أي نص للبحث فيه لاحقاً"></textarea>
-                <div id="ocrLoading" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.9);border-radius:10px;align-items:center;justify-content:center;flex-direction:column">
-                  <div style="font-size:13px;font-weight:700;color:#3b82f6;margin-bottom:8px">جارٍ استخراج النص...</div>
-                  <div style="font-size:11px;color:#64748b">قد يستغرق بضع ثوانٍ</div>
+                <textarea id="fOcr" class="inp" rows="4" placeholder="الصقت نص مستخرج من OCR أو أي نص للبحث فيه لاحقاً" style="direction:rtl;text-align:right;white-space:pre-wrap;font-family:Cairo,sans-serif;max-height:160px;overflow-y:auto;resize:vertical"></textarea>
+                <div id="ocrLoading" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.93);border-radius:10px;align-items:center;justify-content:center;flex-direction:column;padding:12px;gap:6px">
+                  <div style="font-size:13px;font-weight:700;color:#3b82f6" id="ocrLoadStatus">جارٍ استخراج النص...</div>
+                  <div style="width:100%;max-width:220px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden">
+                    <div id="ocrLoadFill" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:4px;transition:width .3s"></div>
+                  </div>
+                  <div style="font-size:11px;color:#64748b" id="ocrLoadPct">0%</div>
                 </div>
               </div>
               <div style="display:flex;gap:8px;margin-top:6px">
@@ -637,7 +640,8 @@ textarea.inp{resize:vertical}
                 <input type="text" id="fFilePath" class="inp" placeholder="مثال: C:\Documents\file.pdf أو \\Server\Shared\file.pdf">
                 <button type="button" class="btn btn-sm btn-gray" onclick="pasteFromClipboard()" title="لصق من الحافظة">📋</button>
               </div>
-              <p style="font-size:11px;color:#94a3b8;margin:4px 0 0">روابط file:// تعمل حسب إعدادات المتصفح — قد تحتاج السماح بها يدوياً</p>
+              <p style="font-size:11px;color:#94a3b8;margin:4px 0 0" id="filePathNote">روابط file:// تعمل حسب إعدادات المتصفح — قد تحتاج السماح بها يدوياً</p>
+              <p id="mobileFilePathNote" style="display:none;font-size:11px;color:#f59e0b;margin:4px 0 0">📱 روابط الملفات المحلية (file://) تعمل فقط على أجهزة الحاسوب. على الجوال يتم فتح نسخة الملف المرفوعة مباشرة.</p>
             </div>
           </div>
 
@@ -725,14 +729,14 @@ textarea.inp{resize:vertical}
           <p style="color:#64748b;font-size:13px;margin:0 0 20px">استخراج النص من الصور وملفات الوثائق الممسوحة ضوئياً</p>
           <div class="drop-zone" id="ocrDrop"
             onclick="document.getElementById('ocrFile').click()"
-            ondragover="event.preventDefault();this.style.borderColor='#3b82f6'"
-            ondragleave="this.style.borderColor=''"
-            ondrop="event.preventDefault();this.style.borderColor='';const f=event.dataTransfer.files[0];if(f){const dt=new DataTransfer();dt.items.add(f);document.getElementById('ocrFile').files=dt.files;startOCRUnified(document.getElementById('ocrFile'));}">
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="event.preventDefault();this.classList.remove('drag-over');if(event.dataTransfer.files.length){const inp=document.getElementById('ocrFile');try{const dt=new DataTransfer();[...event.dataTransfer.files].forEach(f=>dt.items.add(f));inp.files=dt.files;}catch(e){/* fallback */}startOCRUnified(inp);}">
             <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
-            <p style="color:#64748b;font-weight:700;margin:6px 0 2px">ارفع الصورة أو PDF هنا أو اسحب وأفلت</p>
-            <p style="color:#94a3b8;font-size:12px">PNG, JPG, JPEG, PDF — يدعم العربية والإنجليزية</p>
+            <p style="color:#64748b;font-weight:700;margin:6px 0 2px">ارفع الملفات هنا أو اسحب وأفلت — عدة ملفات معاً</p>
+            <p style="color:#94a3b8;font-size:12px">PNG, JPG, PDF, Word (.docx) — يدعم العربية والإنجليزية</p>
           </div>
-          <input type="file" id="ocrFile" accept="image/*,application/pdf" class="hidden" onchange="startOCRUnified(this)">
+          <input type="file" id="ocrFile" accept="image/*,application/pdf,.docx,.doc" multiple class="hidden" onchange="startOCRUnified(this)">
           <div id="ocrImgPreview" style="display:none;margin:14px 0">
             <img id="ocrImg" style="max-height:220px;border-radius:12px;border:1px solid #e2e8f0;display:block;margin:0 auto">
           </div>
@@ -756,7 +760,7 @@ textarea.inp{resize:vertical}
               <label class="lbl" style="margin:0">النص المستخرج (قابل للتعديل)</label>
               <span id="ocrCharCount" style="font-size:11px;color:#94a3b8"></span>
             </div>
-            <textarea id="ocrTxt" class="inp" rows="10" style="font-size:13px;line-height:1.9;direction:auto" oninput="document.getElementById('ocrCharCount').textContent=this.value.length+' حرف'"></textarea>
+            <textarea id="ocrTxt" class="inp" rows="10" style="font-size:13px;line-height:1.9;direction:rtl;text-align:right;white-space:pre-wrap;font-family:Cairo,sans-serif;max-height:400px;overflow-y:auto;resize:vertical" oninput="document.getElementById('ocrCharCount').textContent=this.value.length+' حرف'"></textarea>
             <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
               <button class="btn btn-gray btn-sm" onclick="copyOCR()">📋 نسخ النص</button>
               <button class="btn btn-gray btn-sm" onclick="cleanOCROutput()">✨ تنظيف النص</button>
@@ -1986,7 +1990,9 @@ function filterDocs() {
   empty.style.display='none';
   tbody.innerHTML=docs.map((d,i)=>{
     const s=docStatus(d);
-    const fileLink = d.filePath ? `<a href="file:///${d.filePath.replace(/\\/g, '/')}" target="_blank" onclick="event.stopPropagation()" style="color:#3b82f6;text-decoration:none;font-size:12px">📎 فتح</a>` : '—';
+    const fileLink = d.filePath ? (isMobile()
+      ? `<button onclick="event.stopPropagation();openMobileFile('${d.id}')" style="background:none;border:none;color:#3b82f6;font-size:12px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif;padding:0">📎 فتح</button>`
+      : `<span style="display:inline-flex;align-items:center;gap:6px"><a href="${buildFileHref(d.filePath)}" target="_blank" onclick="event.stopPropagation()" style="color:#3b82f6;text-decoration:none;font-size:12px">📎 فتح</a><button type="button" onclick="event.stopPropagation();copyDocFilePath('${d.id}')" title="نسخ المسار" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:12px;padding:0">📋</button></span>`) : '—';
     return `<tr onclick="viewDoc('${d.id}')">
       <td style="color:#94a3b8">${i+1}</td>
       <td><code style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:5px;color:#3b82f6;font-weight:700">${d.docNum}</code></td>
@@ -2015,7 +2021,13 @@ function viewDoc(id) {
   document.getElementById('dm-title').textContent=doc.title;
   document.getElementById('dm-num').textContent=`رقم المستند: ${doc.docNum}`;
 
-  const fileLink = doc.filePath ? `<a href="file:///${doc.filePath.replace(/\\/g, '/')}" target="_blank" style="color:#3b82f6;text-decoration:none">📎 ${doc.filePath}</a>` : '—';
+  const fileLink = doc.filePath ? (isMobile()
+    ? `<span style="display:flex;flex-direction:column;gap:4px">
+        <button onclick="openMobileFile('${doc.id}')" style="background:#eff6ff;border:1.5px solid #3b82f6;color:#1d4ed8;border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:Cairo,sans-serif">📎 فتح / تنزيل الملف المرفق</button>
+        <button onclick="navigator.clipboard.writeText('${doc.filePath}').then(()=>toast('تم نسخ المسار','success'))" style="background:none;border:none;color:#64748b;font-size:11px;cursor:pointer;font-family:Cairo,sans-serif">📋 نسخ المسار</button>
+        <span style="font-size:10px;color:#94a3b8">روابط الملفات المحلية (file://) تعمل فقط على أجهزة الحاسوب</span>
+      </span>`
+    : `<span style="display:inline-flex;align-items:center;gap:8px"><a href="${buildFileHref(doc.filePath)}" target="_blank" style="color:#3b82f6;text-decoration:none">📎 ${doc.filePath}</a><button type="button" onclick="copyDocFilePath('${doc.id}')" title="نسخ المسار" style="background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:Cairo,sans-serif">📋 نسخ المسار</button></span>`) : '—';
   const fields=[
     ['النوع',doc.type||'—'],['الإدارة',doc.dept||'—'],['القسم',doc.section||'—'],
     ['المشروع',doc.project||'—'],['الجهة المصدرة',doc.source||'—'],['العميل/المورد',doc.client||'—'],
@@ -2161,6 +2173,7 @@ function exportDocPDF() {
 let droppedFileNames = [];
 function setupAddDocForm(docId) {
   droppedFileNames=[];
+  droppedFileObjects=[];
   document.getElementById('droppedFiles').innerHTML='';
   document.getElementById('editDocId').value=docId||'';
   document.getElementById('addDocTitle').textContent=docId?'تعديل الوثيقة':'إضافة وثيقة جديدة';
@@ -2189,7 +2202,7 @@ function setupAddDocForm(docId) {
   if(doc?.category) document.getElementById('fCat').value = doc.category;
   
   // File path
-  fv('fFilePath', doc?.filePath || '');
+  fv('fFilePath', sanitizeFilePath(doc?.filePath || ''));
   // Signature
   const chk=document.getElementById('chkSign');
   chk.checked=!!(doc?.signature);
@@ -2223,22 +2236,40 @@ function handleDrop(e){
   processFiles([...e.dataTransfer.files]);
 }
 function handleFilePick(input){processFiles([...input.files]);input.value='';}
+// Store file objects alongside names for multi-file OCR
+let droppedFileObjects = [];
 function processFiles(files){
-  files.forEach(f=>{if(!droppedFileNames.includes(f.name))droppedFileNames.push(f.name);});
+  files.forEach(f=>{
+    if(!droppedFileNames.includes(f.name)){
+      droppedFileNames.push(f.name);
+      droppedFileObjects.push(f);
+    }
+  });
   document.getElementById('fFiles').value=droppedFileNames.join(', ');
+  renderFileChips();
+  // Trigger auto-OCR sequentially for all supported files
+  if(files.length>0){
+    runAutoOCRQueue(droppedFileObjects.filter(f=>
+      f.type.startsWith('image/')||
+      f.type==='application/pdf'||
+      f.name.toLowerCase().endsWith('.docx')||
+      f.name.toLowerCase().endsWith('.doc')
+    ));
+  }
+}
+function renderFileChips(){
   document.getElementById('droppedFiles').innerHTML=droppedFileNames.map((n,i)=>`
     <span style="display:inline-flex;align-items:center;gap:4px;background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">
       📄 ${n}
-      <span onclick="removeFile(${i})" style="cursor:pointer;color:#ef4444;font-size:14px">×</span>
+      <span onclick="removeFile(${i})" style="cursor:pointer;color:#ef4444;font-size:14px" title="إزالة هذا الملف">×</span>
     </span>`).join('');
-  
-  // Trigger auto-OCR for first image file
-  const imageFile = files.find(f => f.type.startsWith('image/'));
-  if (imageFile) {
-    runAutoOCR(imageFile);
-  }
 }
-function removeFile(i){droppedFileNames.splice(i,1);processFiles([]);}
+function removeFile(i){
+  droppedFileNames.splice(i,1);
+  droppedFileObjects.splice(i,1);
+  document.getElementById('fFiles').value=droppedFileNames.join(', ');
+  renderFileChips();
+}
 
 function saveDoc() {
   const num=document.getElementById('fNum').value.trim();
@@ -2260,7 +2291,7 @@ function saveDoc() {
     expiry:document.getElementById('fExpiry').value,status:document.getElementById('fStatus').value,
     files:document.getElementById('fFiles').value,keywords:document.getElementById('fKeywords').value,
     notes:document.getElementById('fNotes').value,ocr:document.getElementById('fOcr').value,
-    filePath:document.getElementById('fFilePath').value,signature:sig
+    filePath:sanitizeFilePath(document.getElementById('fFilePath').value),signature:sig
   };
 
   if(docId){
@@ -2441,9 +2472,40 @@ function emptyTrash() {
 // ====== OCR ======
 let ocrWorker = null;
 async function startOCRUnified(input) {
-  const file=input.files[0];if(!file)return;
-  if(file.type==='application/pdf'){await startPDFOCR(file);}
-  else{await startImageOCR(file);}
+  const files=[...input.files];if(!files.length)return;
+  // Reset OCR output
+  document.getElementById('ocrOutput').style.display='none';
+  document.getElementById('ocrImgPreview').style.display='none';
+  document.getElementById('ocrKeywordsOut').style.display='none';
+  let combinedText='';
+  for(let i=0;i<files.length;i++){
+    const file=files[i];
+    const sep=files.length>1?`\n\n—— ${file.name} ——\n\n`:'';
+    try{
+      let txt='';
+      const ext=file.name.split('.').pop().toLowerCase();
+      if(ext==='docx'||ext==='doc'||file.type.includes('word')){
+        txt=await extractDocxText(file);
+      } else if(file.type==='application/pdf'){
+        txt=await extractPDFText(file,i,files.length);
+      } else if(file.type.startsWith('image/')){
+        const url=URL.createObjectURL(file);
+        const img2=document.getElementById('ocrImg');
+        img2.src=url;document.getElementById('ocrImgPreview').style.display='';
+        txt=await extractImageOCRText(file);
+      }
+      if(txt)combinedText+=(combinedText?sep:'')+txt;
+    }catch(e){
+      toast(`تعذّر استخراج النص من "${file.name}": ${e.message}`,'warn');
+    }
+  }
+  const cleaned=cleanOCRText(combinedText)||'لم يُتمكن من استخراج نص من هذا الملف';
+  document.getElementById('ocrTxt').value=cleaned;
+  document.getElementById('ocrCharCount').textContent=cleaned.length+' حرف';
+  document.getElementById('ocrProgress').style.display='none';
+  document.getElementById('pdfOcrProgress').style.display='none';
+  document.getElementById('ocrOutput').style.display='';
+  toast(`✅ اكتمل الاستخراج (${files.length} ملف)`,'success');
   input.value='';
 }
 async function startOCR(input) { await startOCRUnified(input); }
@@ -2480,6 +2542,78 @@ function cleanOCRText(raw) {
   return text.trim();
 }
 
+// ── تنظيف مسار الملف عند حفظه: يحذف علامات التنصيص التي تضيفها ميزة "نسخ كمسار" في ويندوز ──
+function sanitizeFilePath(p){
+  if(!p) return '';
+  let s = String(p).trim();
+  s = s.replace(/^["']+/, '').replace(/["']+$/, '').trim();
+  return s;
+}
+
+// ── Device detection ──
+function isMobile(){return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||window.matchMedia('(max-width:768px)').matches;}
+
+// ── بناء رابط صحيح لفتح المسار (ملف على الجهاز أو رابط درايف/ويب) ──
+// يحل مشكلة: كان الكود يضيف "file:///" أمام أي مسار حتى لو كان رابط http/https (درايف)
+// فينتج رابط تالف مثل file:///https://drive.google.com/... فيفتح صفحة بحث/خطأ في المتصفح
+// وأيضاً يحل مشكلة مسارات الشبكة (\\Server\Share\..) التي كانت تتحول لرابط مكسور بعدد غلط من الشرطات المائلة
+// ترميز بسيط: يحافظ على الأحرف العربية/يونيكود كما هي (لأن مستكشف ويندوز لا يفكّ ترميز %XX)
+// ويرمّز فقط الرموز التي تكسر الرابط فعلياً: المسافة، #، ?، وإشارة % نفسها
+function safeUriEscape(s){
+  return s.replace(/%/g,'%25').replace(/ /g,'%20').replace(/#/g,'%23').replace(/\?/g,'%3F');
+}
+
+function copyDocFilePath(docId){
+  const doc = DB.documents.find(x=>x.id===docId);
+  if(!doc || !doc.filePath){ toast('لا يوجد مسار محفوظ لهذه الوثيقة','warn'); return; }
+  navigator.clipboard.writeText(doc.filePath)
+    .then(()=>toast('تم نسخ المسار','success'))
+    .catch(()=>toast('تعذّر نسخ المسار','error'));
+}
+
+function buildFileHref(rawPath){
+  if(!rawPath) return null;
+  let p = String(rawPath).trim();
+  // إزالة علامات التنصيص التي تضيفها خاصية "نسخ كمسار" في ويندوز، مثل "C:\...\file.pdf"
+  p = p.replace(/^["']+/, '').replace(/["']+$/, '').trim();
+  if(!p) return null;
+  // رابط ويب/درايف جاهز — يُستخدم كما هو بدون أي إضافة
+  if(/^(https?:|ftp:)\/\//i.test(p)) return encodeURI(p);
+  // رابط file:// مكتوب مسبقاً بشكل كامل
+  if(/^file:/i.test(p)) return p;
+  // توحيد الشرطات المائلة
+  let norm = p.replace(/\\/g,'/');
+  // مسار شبكة (UNC) مثل \\Server\Share\file.pdf أو //Server/Share/file.pdf
+  if(/^\/\//.test(norm)){
+    norm = norm.replace(/^\/+/, '');
+    return 'file://' + safeUriEscape(norm);
+  }
+  // مسار يبدأ بحرف قرص (C:\... أو C:/...)
+  if(/^[A-Za-z]:/.test(norm)){
+    return 'file:///' + safeUriEscape(norm);
+  }
+  // مسار يونكس/ماك مطلق (/Users/... أو /home/...)
+  if(norm.startsWith('/')){
+    return 'file://' + safeUriEscape(norm);
+  }
+  // أي حالة أخرى: نضيف البادئة الافتراضية
+  return 'file:///' + safeUriEscape(norm);
+}
+
+// ── Open file on mobile using stored blob (if available) ──
+let _docBlobs={};
+function storeDocBlob(docId,file){
+  const url=URL.createObjectURL(file);
+  _docBlobs[docId]=url;
+}
+function openMobileFile(docId){
+  if(_docBlobs[docId]){
+    const a=document.createElement('a');a.href=_docBlobs[docId];a.target='_blank';a.click();
+  } else {
+    toast('الملف المرفق غير متاح في هذه الجلسة. الرجاء فتح الملف من جهازك مباشرة.','warn',5000);
+  }
+}
+
 async function ensureTesseract() {
   if(typeof Tesseract!=='undefined')return;
   await new Promise((res,rej)=>{
@@ -2489,33 +2623,171 @@ async function ensureTesseract() {
   });
 }
 
+async function ensureMammoth() {
+  if(typeof mammoth!=='undefined')return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js';
+    s.onload=res;s.onerror=rej;document.head.appendChild(s);
+  });
+}
+
+// ── Preprocess image: convert to grayscale + boost contrast for better OCR ──
+async function preprocessImageForOCR(file){
+  return new Promise((resolve)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0);
+      // Grayscale conversion
+      const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const d=imageData.data;
+      for(let i=0;i<d.length;i+=4){
+        const gray=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+        // Contrast boost: clamp values toward extremes
+        const boosted=gray<128?Math.max(0,gray-20):Math.min(255,gray+20);
+        d[i]=d[i+1]=d[i+2]=boosted;
+      }
+      ctx.putImageData(imageData,0,0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(blob=>resolve(blob),'image/png');
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);resolve(file);};
+    img.src=url;
+  });
+}
+
+// ── Extract text from image file using Tesseract (with preprocessing) ──
+async function extractImageOCRText(file, onProgress){
+  await ensureTesseract();
+  const processedBlob=await preprocessImageForOCR(file);
+  const w=await Tesseract.createWorker(['ara','eng'],1,{
+    logger:m=>{
+      if(onProgress)onProgress(m);
+      if(m.status==='recognizing text'){
+        const p=Math.round(m.progress*100);
+        const fill=document.getElementById('ocrFill');
+        const pct=document.getElementById('ocrPct');
+        const stat=document.getElementById('ocrStatus');
+        if(fill)fill.style.width=p+'%';
+        if(pct)pct.textContent=p+'%';
+        if(stat)stat.textContent='جاري استخراج النص... '+p+'%';
+      }
+    }
+  });
+  await w.setParameters({
+    tessedit_pageseg_mode: Tesseract.PSM?.AUTO??3,
+    preserve_interword_spaces:'1',
+    tessjs_create_hocr:'0',
+    tessjs_create_tsv:'0',
+  });
+  document.getElementById('ocrProgress').style.display='';
+  document.getElementById('ocrStatus').textContent='جاري التهيئة...';
+  document.getElementById('ocrPct').textContent='0%';
+  document.getElementById('ocrFill').style.width='0%';
+  const {data:{text}}=await w.recognize(processedBlob);
+  await w.terminate();
+  document.getElementById('ocrProgress').style.display='none';
+  return cleanOCRText(text);
+}
+
+// ── Extract text from DOCX using mammoth ──
+async function extractDocxText(file){
+  await ensureMammoth();
+  const buf=await file.arrayBuffer();
+  const result=await mammoth.extractRawText({arrayBuffer:buf});
+  return result.value||'';
+}
+
+// ── Extract text from PDF (text layer → OCR fallback) ──
+async function extractPDFText(file, fileIdx, totalFiles){
+  const pg=document.getElementById('pdfOcrProgress');
+  const fill=document.getElementById('pdfFill');
+  const pct=document.getElementById('pdfPct');
+  const stat=document.getElementById('pdfStatus');
+  if(pg){pg.style.display='';fill.style.width='0%';pct.textContent='0%';stat.textContent='جارٍ تحميل PDF...';}
+  await ensurePDFJS();
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const total=pdf.numPages;
+  let fullText='',pagesWithText=0;
+  // Pass 1: text layer
+  for(let p=1;p<=total;p++){
+    const page=await pdf.getPage(p);
+    const tc=await page.getTextContent();
+    const pt=tc.items.map(i=>i.str).join(' ').trim();
+    if(pt.length>20){pagesWithText++;fullText+=(fullText?`\n\n— صفحة ${p} —\n`:'')+pt;}
+    if(fill){fill.style.width=Math.round(p/total*50)+'%';pct.textContent=Math.round(p/total*50)+'%';}
+    if(stat)stat.textContent=`فحص طبقة النص — صفحة ${p} من ${total}`;
+  }
+  if(pagesWithText>=total*0.5){if(pg)pg.style.display='none';return fullText.trim();}
+  // Pass 2: OCR fallback on rendered images
+  if(stat)stat.textContent='طبقة نص غير كافية — جارٍ OCR على الصور...';
+  await ensureTesseract();
+  const worker=await Tesseract.createWorker(['ara','eng'],1,{logger:()=>{}});
+  const canvas=document.createElement('canvas');
+  let ocrText='';
+  for(let p=1;p<=total;p++){
+    if(stat)stat.textContent=`OCR — صفحة ${p} من ${total}`;
+    const page=await pdf.getPage(p);
+    const vp=page.getViewport({scale:2.0});
+    canvas.width=vp.width;canvas.height=vp.height;
+    // Grayscale rendering for better OCR
+    const ctx=canvas.getContext('2d');
+    await page.render({canvasContext:ctx,viewport:vp}).promise;
+    const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const d=imgData.data;
+    for(let i=0;i<d.length;i+=4){
+      const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+      const b=g<128?Math.max(0,g-20):Math.min(255,g+20);
+      d[i]=d[i+1]=d[i+2]=b;
+    }
+    ctx.putImageData(imgData,0,0);
+    const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
+    const {data:{text}}=await worker.recognize(blob);
+    if(text.trim())ocrText+=(ocrText?`\n\n— صفحة ${p} —\n`:'')+text.trim();
+    const pp=50+Math.round(p/total*50);
+    if(fill){fill.style.width=pp+'%';pct.textContent=pp+'%';}
+  }
+  await worker.terminate();
+  if(pg)pg.style.display='none';
+  return cleanOCRText(ocrText);
+}
+
+// ── Auto-extract title, summary and keywords from OCR text ──
+function autoFillFromOCRText(text){
+  if(!text||!text.trim())return;
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>3);
+  // Title: first meaningful non-empty line (≥ 8 chars)
+  const titleEl=document.getElementById('fTitle');
+  if(titleEl&&!titleEl.value){
+    const title=lines.find(l=>l.length>=8&&!/^\d+$/.test(l));
+    if(title)titleEl.value=title.substring(0,120);
+  }
+  // Summary/Notes: first paragraph (2-3 sentences after title)
+  const notesEl=document.getElementById('fNotes');
+  if(notesEl&&!notesEl.value){
+    const para=lines.slice(1).join(' ').substring(0,300);
+    if(para.length>20)notesEl.value=para;
+  }
+  // Keywords
+  const kwEl=document.getElementById('fKeywords');
+  if(kwEl&&!kwEl.value){
+    const kw=_extractKeywords(text).slice(0,10);
+    if(kw.length)kwEl.value=kw.join(', ');
+  }
+}
+
 async function startImageOCR(file) {
   const url=URL.createObjectURL(file);
   const img=document.getElementById('ocrImg');
   img.src=url;document.getElementById('ocrImgPreview').style.display='';
-  document.getElementById('ocrProgress').style.display='';
   document.getElementById('ocrOutput').style.display='none';
-  document.getElementById('ocrPct').textContent='0%';
-  document.getElementById('ocrFill').style.width='0%';
-  document.getElementById('ocrStatus').textContent='جاري التهيئة...';
   try {
-    await ensureTesseract();
-    const w=await Tesseract.createWorker(['ara','eng'],1,{
-      logger:m=>{
-        document.getElementById('ocrStatus').textContent=m.status||'...';
-        if(m.status==='recognizing text'){const p=Math.round(m.progress*100);document.getElementById('ocrPct').textContent=p+'%';document.getElementById('ocrFill').style.width=p+'%';}
-      }
-    });
-    // Better parameters for mixed Arabic/English docs
-    await w.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.AUTO,  // 3 = fully automatic
-      preserve_interword_spaces: '1',
-      tessjs_create_hocr: '0',
-      tessjs_create_tsv: '0',
-    });
-    const {data:{text}}=await w.recognize(file);
-    await w.terminate();
-    const cleaned = cleanOCRText(text);
+    const cleaned=await extractImageOCRText(file);
     document.getElementById('ocrTxt').value=cleaned;
     document.getElementById('ocrCharCount').textContent=cleaned.length+' حرف';
     document.getElementById('ocrProgress').style.display='none';
@@ -2598,64 +2870,17 @@ async function ensurePDFJS() {
 }
 
 async function startPDFOCR(file) {
-  const pg=document.getElementById('pdfOcrProgress');
-  const fill=document.getElementById('pdfFill');
-  const pct=document.getElementById('pdfPct');
-  const stat=document.getElementById('pdfStatus');
-  if(pg){pg.style.display='';fill.style.width='0%';pct.textContent='0%';stat.textContent='جارٍ تحميل ملف PDF...';}
   document.getElementById('ocrOutput').style.display='none';
   document.getElementById('ocrImgPreview').style.display='none';
   try {
-    await ensurePDFJS();
-    const buf=await file.arrayBuffer();
-    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
-    const total=pdf.numPages;
-    let fullText='',pagesWithText=0;
-    // Pass 1: extract digital text layer
-    for(let p=1;p<=total;p++){
-      const page=await pdf.getPage(p);
-      const tc=await page.getTextContent();
-      const pt=tc.items.map(i=>i.str).join(' ').trim();
-      if(pt.length>20){pagesWithText++;fullText+=(fullText?`\n\n— صفحة ${p} —\n`:'')+pt;}
-      if(fill){fill.style.width=Math.round(p/total*50)+'%';pct.textContent=Math.round(p/total*50)+'%';}
-      if(stat)stat.textContent=`فحص الطبقة النصية — صفحة ${p} من ${total}`;
-    }
-    if(pagesWithText>=total*0.5){
-      if(pg)pg.style.display='none';
-      document.getElementById('ocrTxt').value=fullText.trim();
-      document.getElementById('ocrOutput').style.display='';
-      toast(`✅ استُخرج النص من ${total} صفحة PDF (رقمي)`,'success');
-      return;
-    }
-    // Pass 2: OCR on rendered images
-    if(stat)stat.textContent='النص الرقمي غير مكتمل — بدء OCR على الصور...';
-    if(typeof Tesseract==='undefined'){
-      await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
-    }
-    const worker=await Tesseract.createWorker(['ara','eng'],1,{logger:()=>{}});
-    const canvas=document.createElement('canvas');
-    let ocrText='';
-    for(let p=1;p<=total;p++){
-      if(stat)stat.textContent=`OCR — صفحة ${p} من ${total}`;
-      const page=await pdf.getPage(p);
-      const vp=page.getViewport({scale:2.0});
-      canvas.width=vp.width;canvas.height=vp.height;
-      await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-      const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
-      const {data:{text}}=await worker.recognize(blob);
-      if(text.trim())ocrText+=(ocrText?`\n\n— صفحة ${p} —\n`:'')+text.trim();
-      const pp=50+Math.round(p/total*50);
-      if(fill){fill.style.width=pp+'%';pct.textContent=pp+'%';}
-    }
-    await worker.terminate();
-    if(pg)pg.style.display='none';
-    const cleaned2=cleanOCRText(ocrText)||'لم يُتمكن من استخراج نص من هذا الملف';
-    document.getElementById('ocrTxt').value=cleaned2;
-    document.getElementById('ocrCharCount').textContent=cleaned2.length+' حرف';
+    const text=await extractPDFText(file,0,1);
+    const cleaned=cleanOCRText(text)||'لم يُتمكن من استخراج نص من هذا الملف';
+    document.getElementById('ocrTxt').value=cleaned;
+    document.getElementById('ocrCharCount').textContent=cleaned.length+' حرف';
     document.getElementById('ocrOutput').style.display='';
-    toast(`✅ اكتمل OCR لـ ${total} صفحة`,'success');
+    toast('✅ اكتمل استخراج نص PDF','success');
   } catch(e){
-    if(pg)pg.style.display='none';
+    document.getElementById('pdfOcrProgress').style.display='none';
     toast('خطأ في معالجة PDF: '+e.message,'error');
   }
 }
@@ -2688,62 +2913,92 @@ function resetOCR(){
 
 // ====== AUTO OCR IN ADD DOC FORM ======
 let lastOCRFile = null;
-async function runAutoOCR(file) {
-  if (!file || (!file.type.startsWith('image/') && file.type !== 'application/pdf')) return;
-  if (file.type === 'application/pdf') { await startPDFOCR(file).catch(e=>toast('PDF OCR: '+e.message,'error')); return; }
-  lastOCRFile = file;
+
+// Helper to update the loading overlay inside the fOcr box
+function _setOcrLoadProgress(status, pct) {
+  const s=document.getElementById('ocrLoadStatus');
+  const f=document.getElementById('ocrLoadFill');
+  const p=document.getElementById('ocrLoadPct');
+  if(s)s.textContent=status;
+  if(f)f.style.width=pct+'%';
+  if(p)p.textContent=pct+'%';
+}
+
+// Process a queue of files sequentially and fill OCR field
+async function runAutoOCRQueue(files) {
+  if(!files||!files.length)return;
   const loading = document.getElementById('ocrLoading');
   const warning = document.getElementById('ocrWarning');
   const ocrField = document.getElementById('fOcr');
-  
   loading.style.display = 'flex';
   warning.style.display = 'none';
-  
-  try {
-    if (typeof Tesseract === 'undefined') {
-      // Check internet connectivity by trying to load the script
-      try {
-        await new Promise((res, rej) => {
-          const s = document.createElement('script');
-          s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-          s.onload = res;
-          s.onerror = rej;
-          document.head.appendChild(s);
+  let combinedText = '';
+  let isFirst = true;
+  for(let fi=0; fi<files.length; fi++){
+    const file=files[fi];
+    const ext=file.name.split('.').pop().toLowerCase();
+    const sep=files.length>1?`\n\n—— ${file.name} ——\n\n`:'';
+    try{
+      let txt='';
+      _setOcrLoadProgress(`معالجة الملف ${fi+1} من ${files.length}: ${file.name}`,Math.round(fi/files.length*80));
+      if(ext==='docx'||ext==='doc'||file.type.includes('word')){
+        _setOcrLoadProgress('استخراج نص Word... '+file.name, Math.round(fi/files.length*80)+10);
+        try{ await ensureMammoth(); } catch(e){ loading.style.display='none'; warning.style.display='inline'; warning.textContent='⚠️ الأرشفة الذكية تحتاج اتصال بالإنترنت أول مرة فقط'; return; }
+        txt=await extractDocxText(file);
+      } else if(file.type==='application/pdf'){
+        _setOcrLoadProgress('استخراج نص PDF... '+file.name, Math.round(fi/files.length*80)+5);
+        try{ await ensurePDFJS(); } catch(e){ loading.style.display='none'; warning.style.display='inline'; warning.textContent='⚠️ الأرشفة الذكية تحتاج اتصال بالإنترنت أول مرة فقط'; return; }
+        txt=await extractPDFText(file,fi,files.length);
+      } else if(file.type.startsWith('image/')){
+        _setOcrLoadProgress('OCR على الصورة... '+file.name, Math.round(fi/files.length*80)+5);
+        try{ await ensureTesseract(); } catch(e){ loading.style.display='none'; warning.style.display='inline'; warning.textContent='⚠️ الأرشفة الذكية تحتاج اتصال بالإنترنت أول مرة فقط'; return; }
+        // Inline OCR with progress reflected in overlay
+        const processedBlob=await preprocessImageForOCR(file);
+        const w=await Tesseract.createWorker(['ara','eng'],1,{
+          logger:m=>{
+            if(m.status==='recognizing text'){
+              const p=Math.round(m.progress*100);
+              _setOcrLoadProgress(`استخراج النص... ${p}%`, Math.min(95, Math.round(fi/files.length*80)+p*0.2));
+            }
+          }
         });
-      } catch (e) {
-        loading.style.display = 'none';
-        warning.style.display = 'inline';
-        warning.textContent = '⚠️ الأرشفة الذكية تحتاج اتصال بالإنترنت أول مرة فقط';
-        return;
+        await w.setParameters({tessedit_pageseg_mode:Tesseract.PSM?.AUTO??3,preserve_interword_spaces:'1',tessjs_create_hocr:'0',tessjs_create_tsv:'0'});
+        const {data:{text}}=await w.recognize(processedBlob);
+        await w.terminate();
+        txt=cleanOCRText(text);
       }
+      if(txt)combinedText+=(combinedText?sep:'')+txt;
+      if(isFirst&&txt){
+        // Auto-fill from first file immediately
+        autoFillFromOCRText(txt);
+        isFirst=false;
+      }
+    }catch(e){
+      toast(`تعذّر استخراج النص من "${file.name}": ${e.message}`,'warn');
     }
-    
-    const w = await Tesseract.createWorker(['ara', 'eng'], 1);
-    await w.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM?.AUTO ?? 3,
-      preserve_interword_spaces: '1',
-    });
-    const { data: { text } } = await w.recognize(file);
-    await w.terminate();
-    
-    ocrField.value = cleanOCRText(text);
-    // auto-fill keywords
-    const kf = document.getElementById('fKeywords');
-    if(kf && !kf.value) kf.value = _extractKeywords(ocrField.value).slice(0,8).join(', ');
-    toast('تم استخراج النص بنجاح', 'success');
-  } catch (e) {
-    loading.style.display = 'none';
-    warning.style.display = 'inline';
-    warning.textContent = '⚠️ فشل استخراج النص: ' + e.message;
-  } finally {
-    loading.style.display = 'none';
   }
+  _setOcrLoadProgress('اكتمل الاستخراج',100);
+  if(combinedText){
+    ocrField.value=combinedText;
+    // If only one file was processed, auto-fill (already done above for first)
+    if(files.length===1) autoFillFromOCRText(combinedText);
+    toast(`✅ تم استخراج النص من ${files.length} ملف`,'success');
+  } else {
+    warning.style.display='inline';
+    warning.textContent='⚠️ تعذّر استخراج نص من الملفات';
+  }
+  loading.style.display='none';
+}
+
+async function runAutoOCR(file) {
+  if (!file) return;
+  await runAutoOCRQueue([file]);
 }
 
 async function pasteFromClipboard() {
   try {
     const text = await navigator.clipboard.readText();
-    document.getElementById('fFilePath').value = text;
+    document.getElementById('fFilePath').value = sanitizeFilePath(text);
     toast('تم اللصق من الحافظة', 'success');
   } catch (e) {
     toast('تعذر الوصول للحافظة', 'error');
@@ -3133,6 +3388,13 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('app').style.display = 'none';
   // Check for OPFS crash-recovery backup
   checkOPFSRecovery();
+  // Show mobile-specific hints
+  if(isMobile()){
+    const mobileNote=document.getElementById('mobileFilePathNote');
+    const desktopNote=document.getElementById('filePathNote');
+    if(mobileNote)mobileNote.style.display='';
+    if(desktopNote)desktopNote.style.display='none';
+  }
 });
 </script>
 </body>
