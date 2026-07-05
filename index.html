@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Brandzo Hub — نظام إدارة الوثائق</title>
+<title>Brandzo Hub — نظام إدارة الوثائق v2.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -151,6 +151,40 @@ textarea.inp{resize:vertical}
 .save-dot.saved{background:#22c55e;animation:none}
 .save-dot.unsaved{background:#f59e0b;animation:pulse-dot 1s infinite}
 @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+/* ── Deep category tree ── */
+.cat-node{margin-right:0}
+.cat-toggle-btn{background:none;border:none;cursor:pointer;color:#64748b;font-size:11px;padding:0 3px;transition:transform .15s;flex-shrink:0;line-height:1}
+.cat-toggle-btn.open{transform:rotate(90deg)}
+.folder-children{border-right:2px solid #e2e8f0;margin-right:14px;padding-right:4px;margin-top:2px}
+.folder-item{padding:5px 8px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:#374151;transition:background .15s;user-select:none}
+.folder-item:hover{background:#f1f5f9}
+.folder-item.active-folder{background:#dbeafe;color:#1d4ed8}
+/* ── Sidebar overlay ── */
+#sidebarOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:199}
+/* ── PDF progress ── */
+#pdfOcrProgress{display:none;padding:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;margin-top:10px}
+.pdf-pg-bar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin:6px 0}
+.pdf-pg-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#06b6d4);border-radius:3px;transition:width .3s}
+/* ── Sub-cats toggle ── */
+.subcat-toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b;cursor:pointer;padding:4px 0;margin-bottom:8px;user-select:none}
+.subcat-toggle input{cursor:pointer;width:14px;height:14px}
+/* ── Mobile hamburger ── */
+#mobileMenuBtn{display:none}
+/* ── Responsive ── */
+@media(max-width:768px){
+  :root{--sb:0px!important}
+  #mobileMenuBtn{display:flex!important;align-items:center}
+  .sidebar{position:fixed!important;top:0!important;right:0!important;height:100vh!important;width:270px!important;z-index:200!important;transform:translateX(100%)!important;transition:transform .3s!important}
+  .sidebar.mobile-open{transform:translateX(0)!important}
+  .content{padding:12px!important}
+  .modal-box{max-width:98vw!important;max-height:90vh!important;overflow-y:auto!important}
+}
+@media(max-width:480px){
+  header{padding:0 10px!important;gap:6px!important}
+  .content{padding:8px!important}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tbl{min-width:600px}
+}
 </style>
 </head>
 <body>
@@ -161,7 +195,7 @@ textarea.inp{resize:vertical}
     <svg width="44" height="44" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
   </div>
   <h1 style="color:#f1f5f9;font-size:32px;font-weight:800;margin:0 0 6px">Brandzo Hub</h1>
-  <p style="color:#64748b;font-size:15px;margin:0 0 32px">نظام إدارة الوثائق المؤسسي</p>
+  <p style="color:#64748b;font-size:15px;margin:0 0 32px">نظام إدارة الوثائق المؤسسي — ليبيا</p>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:320px">
     <button class="load-btn" style="width:100%" onclick="loadNewSession()">
       <span style="font-size:18px">🆕</span> بدء جلسة جديدة
@@ -232,6 +266,9 @@ textarea.inp{resize:vertical}
     <button onclick="cancel2FA()" style="width:100%;text-align:center;color:#64748b;font-size:13px;background:none;border:none;cursor:pointer;margin-top:10px;font-family:Cairo,sans-serif">← العودة لتسجيل الدخول</button>
   </div>
 </div>
+
+<!-- Mobile sidebar overlay -->
+<div id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
 <!-- ========== MAIN APP ========== -->
 <div id="app" style="display:none">
@@ -330,7 +367,10 @@ textarea.inp{resize:vertical}
   <div class="main">
     <!-- HEADER -->
     <header class="header-bar">
-      <button onclick="toggleSidebar()" style="background:none;border:none;cursor:pointer;color:#64748b;padding:4px;border-radius:8px;line-height:1" title="القائمة">
+      <button id="mobileMenuBtn" onclick="toggleMobileSidebar()" style="background:none;border:none;cursor:pointer;color:#64748b;padding:4px;border-radius:8px;line-height:1" title="القائمة">
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <button onclick="toggleSidebar()" style="background:none;border:none;cursor:pointer;color:#64748b;padding:4px;border-radius:8px;line-height:1;display:none" title="تصغير القائمة">
         <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
       <h1 id="pageTitle" style="font-size:16px;font-weight:800;color:#1e293b;margin:0;flex:1">لوحة التحكم</h1>
@@ -683,14 +723,26 @@ textarea.inp{resize:vertical}
         <div class="card" style="padding:24px;max-width:750px;margin:0 auto">
           <h2 style="font-size:18px;font-weight:800;color:#1e293b;margin:0 0 6px">الأرشفة الذكية (OCR)</h2>
           <p style="color:#64748b;font-size:13px;margin:0 0 20px">استخراج النص من الصور وملفات الوثائق الممسوحة ضوئياً</p>
-          <div class="drop-zone" id="ocrDrop" onclick="document.getElementById('ocrFile').click()">
+          <div class="drop-zone" id="ocrDrop"
+            onclick="document.getElementById('ocrFile').click()"
+            ondragover="event.preventDefault();this.style.borderColor='#3b82f6'"
+            ondragleave="this.style.borderColor=''"
+            ondrop="event.preventDefault();this.style.borderColor='';const f=event.dataTransfer.files[0];if(f){const dt=new DataTransfer();dt.items.add(f);document.getElementById('ocrFile').files=dt.files;startOCRUnified(document.getElementById('ocrFile'));}">
             <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
-            <p style="color:#64748b;font-weight:700;margin:6px 0 2px">ارفع الصورة هنا</p>
-            <p style="color:#94a3b8;font-size:12px">PNG, JPG, JPEG — يدعم العربية والإنجليزية</p>
+            <p style="color:#64748b;font-weight:700;margin:6px 0 2px">ارفع الصورة أو PDF هنا أو اسحب وأفلت</p>
+            <p style="color:#94a3b8;font-size:12px">PNG, JPG, JPEG, PDF — يدعم العربية والإنجليزية</p>
           </div>
-          <input type="file" id="ocrFile" accept="image/*" class="hidden" onchange="startOCR(this)">
+          <input type="file" id="ocrFile" accept="image/*,application/pdf" class="hidden" onchange="startOCRUnified(this)">
           <div id="ocrImgPreview" style="display:none;margin:14px 0">
             <img id="ocrImg" style="max-height:220px;border-radius:12px;border:1px solid #e2e8f0;display:block;margin:0 auto">
+          </div>
+          <div id="pdfOcrProgress">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:13px;font-weight:700;color:#0369a1">🔄 معالجة PDF</span>
+              <span id="pdfPct" style="font-size:12px;color:#0369a1">0%</span>
+            </div>
+            <div class="pdf-pg-bar"><div id="pdfFill" class="pdf-pg-fill" style="width:0%"></div></div>
+            <p id="pdfStatus" style="font-size:12px;color:#64748b;margin:4px 0 0">جارٍ التحليل...</p>
           </div>
           <div id="ocrProgress" style="display:none;margin:14px 0">
             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -700,12 +752,22 @@ textarea.inp{resize:vertical}
             <div class="ocr-bar"><div class="ocr-fill" id="ocrFill" style="width:0%"></div></div>
           </div>
           <div id="ocrOutput" style="display:none">
-            <label class="lbl" style="margin-top:14px">النص المستخرج (قابل للتعديل)</label>
-            <textarea id="ocrTxt" class="inp" rows="10" style="font-size:13px;line-height:1.8"></textarea>
-            <div style="display:flex;gap:8px;margin-top:10px">
-              <button class="btn btn-gray btn-sm" onclick="copyOCR()">نسخ النص</button>
-              <button class="btn btn-primary btn-sm" onclick="useOCRInDoc()">إنشاء وثيقة بهذا النص</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;margin-bottom:4px">
+              <label class="lbl" style="margin:0">النص المستخرج (قابل للتعديل)</label>
+              <span id="ocrCharCount" style="font-size:11px;color:#94a3b8"></span>
+            </div>
+            <textarea id="ocrTxt" class="inp" rows="10" style="font-size:13px;line-height:1.9;direction:auto" oninput="document.getElementById('ocrCharCount').textContent=this.value.length+' حرف'"></textarea>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+              <button class="btn btn-gray btn-sm" onclick="copyOCR()">📋 نسخ النص</button>
+              <button class="btn btn-gray btn-sm" onclick="cleanOCROutput()">✨ تنظيف النص</button>
+              <button class="btn btn-gray btn-sm" onclick="extractKeywordsFromOCRPage()">🔍 استخراج كلمات مفتاحية</button>
+              <button class="btn btn-primary btn-sm" onclick="useOCRInDoc()">📄 إنشاء وثيقة</button>
               <button class="btn btn-gray btn-sm" onclick="resetOCR()">مسح</button>
+            </div>
+            <div id="ocrKeywordsOut" style="display:none;margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px">
+              <p style="font-size:12px;font-weight:700;color:#166534;margin:0 0 6px">🔑 الكلمات المفتاحية المقترحة:</p>
+              <p id="ocrKeywordsList" style="font-size:13px;color:#15803d;margin:0;line-height:1.8"></p>
+              <button class="btn btn-sm btn-primary" style="margin-top:8px" onclick="applyOCRKeywordsToDoc()">استخدامها عند إنشاء الوثيقة</button>
             </div>
           </div>
         </div>
@@ -782,8 +844,8 @@ textarea.inp{resize:vertical}
             </div>
             <div class="card" style="padding:18px">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">الفروع</h3>
-                <button class="btn btn-sm btn-primary" onclick="addBranch()">+ فرع</button>
+                <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">الفروع / المدن</h3>
+                <button class="btn btn-sm btn-primary" onclick="addBranch()">+ مدينة / فرع</button>
               </div>
               <div id="branchList" style="display:flex;flex-direction:column;gap:4px"></div>
             </div>
@@ -1213,28 +1275,136 @@ function initDefaults() {
   }];
   DB.structure = {
     departments:[
-      {id:'d1',name:'الإدارة العامة',sections:['الشؤون الإدارية','تقنية المعلومات','الاستقبال']},
-      {id:'d2',name:'الموارد البشرية',sections:['التوظيف','التدريب','شؤون الموظفين']},
-      {id:'d3',name:'المالية',sections:['الحسابات','المراجعة','الميزانية']},
-      {id:'d4',name:'العمليات',sections:['الإنتاج','الجودة','المستودعات']},
-      {id:'d5',name:'المشاريع',sections:['إدارة المشاريع','الهندسة','التصميم']},
+      {id:'d1',name:'ادارة الاتصالات والعلاقات العامة',sections:['الاتصالات الداخلية','العلاقات الخارجية','الإعلام']},
+      {id:'d2',name:'ادارة التسويق',sections:['التسويق الرقمي','العلامات التجارية','التحليلات']},
+      {id:'d3',name:'ادارة التقنية',sections:['تقنية المعلومات','الدعم الفني','الأمن السيبراني']},
+      {id:'d4',name:'ادارة اللوجستيك',sections:['المستودعات','الشحن','سلسلة التوريد']},
+      {id:'d5',name:'ادارة المالية',sections:['الحسابات','المراجعة','الميزانية']},
+      {id:'d6',name:'ادارة الموارد البشرية',sections:['التوظيف','التدريب','شؤون الموظفين']},
+      {id:'d7',name:'ادارة Play time',sections:['العمليات','التصميم','المبيعات']},
+      {id:'d8',name:'ادارة التجزئة',sections:['المتاجر','المخزون','خدمة العملاء']},
+      {id:'d9',name:'ادارة المبيعات',sections:['المبيعات المباشرة','تطوير الأعمال','علاقات العملاء']},
     ],
-    projects:['مشروع التوسعة أ','مشروع البنية التحتية','مشروع رقمنة الوثائق'],
-    branches:['الرياض — المقر الرئيسي','جدة','الدمام','الخبر']
+    projects:['Brandzo building','Kiddo store','Mall','Play time','Broadway Maylen','SBN COMPANY','Tendam company','Arcadia and sahara'],
+    branches:['بنغازي — المقر الرئيسي','طرابلس','مصراتة']
   };
   DB.categories=[
-    {id:'c1',name:'العقود والاتفاقيات',parentId:null},
-    {id:'c2',name:'التقارير المالية',parentId:null},
-    {id:'c3',name:'وثائق الموارد البشرية',parentId:null},
-    {id:'c4',name:'المشاريع الهندسية',parentId:null},
-    {id:'c5',name:'المراسلات الرسمية',parentId:null},
-    {id:'c6',name:'التراخيص والتصاريح',parentId:null},
+    // قطاع الإدارة العليا والاجتماعات (Management & Meetings)
+    {id:'s1',name:'قطاع الإدارة العليا والاجتماعات',parentId:null},
+    {id:'s1c1',name:'ملخص اجتماعات',parentId:'s1'},
+    {id:'s1c2',name:'جدول الاجتماعات',parentId:'s1'},
+    {id:'s1c3',name:'جداول تنسيق الزيارات والاجتماعات',parentId:'s1'},
+    // قطاع الاتصالات والعلاقات العامة (Communications & PR)
+    {id:'s2',name:'قطاع الاتصالات والعلاقات العامة',parentId:null},
+    {id:'s2c1',name:'موظفين ادارة الاتصالات والعلاقات العامة',parentId:'s2'},
+    {id:'s2c2',name:'مهام ادارة الاتصالات',parentId:'s2'},
+    {id:'s2c2a',name:'تعميمات',parentId:'s2c2'},
+    {id:'s2c2b',name:'جدول مهام قيد الانجاز',parentId:'s2c2'},
+    {id:'s2c2c',name:'جدول مهام منجزة',parentId:'s2c2'},
+    {id:'s2c2d',name:'طلبات شراء',parentId:'s2c2'},
+    {id:'s2c3',name:'تعميمات',parentId:'s2'},
+    {id:'s2c3a',name:'القرارات الادارية',parentId:'s2c3'},
+    {id:'s2c4',name:'رسائل داخلية',parentId:'s2'},
+    {id:'s2c5',name:'مراسلات',parentId:'s2'},
+    {id:'s2c6',name:'صادر ووارد',parentId:'s2'},
+    {id:'s2c7',name:'مقابلات عمل',parentId:'s2'},
+    {id:'s2c8',name:'الزيارات الميدانية',parentId:'s2'},
+    {id:'s2c9',name:'تقارير الرحلات',parentId:'s2'},
+    // قطاع العمليات والتقارير الميدانية (Operations & Reports)
+    {id:'s3',name:'قطاع العمليات والتقارير الميدانية',parentId:null},
+    {id:'s3c1',name:'تقارير يومية',parentId:'s3'},
+    {id:'s3c2',name:'تقارير اسبوعية',parentId:'s3'},
+    // قطاع الاستثمار والتطوير التجاري (Investments & Commercial)
+    {id:'s4',name:'قطاع الاستثمار والتطوير التجاري',parentId:null},
+    {id:'s4c1',name:'تقارير الاعمال والاستثمارات',parentId:'s4'},
+    {id:'s4c2',name:'ايجارات المحلات',parentId:'s4'},
+    {id:'s4c3',name:'عروض مالية',parentId:'s4'},
+    // قطاع الدراسات والتطوير (Studies & Development)
+    {id:'s5',name:'قطاع الدراسات والتطوير',parentId:null},
+    {id:'s5c1',name:'دراسات',parentId:'s5'},
+    {id:'s5c1a',name:'ادارة الاتصالات والعلاقات العامة',parentId:'s5c1'},
+    {id:'s5c1b',name:'ادارة التسويق',parentId:'s5c1'},
+    {id:'s5c1c',name:'ادارة التقنية',parentId:'s5c1'},
+    {id:'s5c1d',name:'ادارة اللوجستيك',parentId:'s5c1'},
+    {id:'s5c1e',name:'ادارة المالية',parentId:'s5c1'},
+    {id:'s5c1f',name:'ادارة الموارد البشرية',parentId:'s5c1'},
+    {id:'s5c1g',name:'ادارة Play time',parentId:'s5c1'},
+    {id:'s5c1h',name:'ادارة التجزئة',parentId:'s5c1'},
+    {id:'s5c1i',name:'ادارة المبيعات',parentId:'s5c1'},
+    // قطاع مشاريع الشركة (Company Projects)
+    {id:'s6',name:'قطاع مشاريع الشركة',parentId:null},
+    {id:'s6bz',name:'Brandzo',parentId:'s6'},
+    {id:'s6bz_brands',name:'Brands',parentId:'s6bz'},
+    {id:'s6bz_bldg',name:'Brandzo building',parentId:'s6bz'},
+    {id:'s6bz_bldg_m',name:'مخططات',parentId:'s6bz_bldg'},
+    {id:'s6bz_kiddo',name:'Kiddo store',parentId:'s6bz'},
+    {id:'s6bz_kd_s',name:'دراسات',parentId:'s6bz_kiddo'},
+    {id:'s6bz_kd_i',name:'هوية',parentId:'s6bz_kiddo'},
+    {id:'s6bz_kd_f',name:'واجهات',parentId:'s6bz_kiddo'},
+    {id:'s6bz_kd_c',name:'عقود',parentId:'s6bz_kiddo'},
+    {id:'s6bz_kd_b',name:'فواتير',parentId:'s6bz_kiddo'},
+    {id:'s6bz_kd_g',name:'العاب',parentId:'s6bz_kiddo'},
+    {id:'s6bz_mall',name:'Mall',parentId:'s6bz'},
+    {id:'s6bz_ml_s',name:'دراسات',parentId:'s6bz_mall'},
+    {id:'s6bz_ml_p',name:'صور',parentId:'s6bz_mall'},
+    {id:'s6bz_ml_c',name:'عقود',parentId:'s6bz_mall'},
+    {id:'s6bz_ml_b',name:'فواتير',parentId:'s6bz_mall'},
+    {id:'s6bz_ml_v',name:'فيديو',parentId:'s6bz_mall'},
+    {id:'s6bz_ml_m',name:'مخططات هندسية',parentId:'s6bz_mall'},
+    {id:'s6bz_ml_pr',name:'Presentation',parentId:'s6bz_mall'},
+    {id:'s6bz_pt',name:'Play time',parentId:'s6bz'},
+    {id:'s6bz_sp',name:'Super Powers',parentId:'s6bz'},
+    {id:'s6bz_sup',name:'الموردين',parentId:'s6bz'},
+    {id:'s6bz_sch',name:'جداول زمنية للتسليم',parentId:'s6bz'},
+    {id:'s6bw',name:'Broadway Maylen',parentId:'s6'},
+    {id:'s6bw_s',name:'دراسات',parentId:'s6bw'},
+    {id:'s6bw_p',name:'صور',parentId:'s6bw'},
+    {id:'s6bw_c',name:'عقود',parentId:'s6bw'},
+    {id:'s6bw_b',name:'فواتير',parentId:'s6bw'},
+    {id:'s6bw_v',name:'فيديو',parentId:'s6bw'},
+    {id:'s6bw_m',name:'مخططات هندسية',parentId:'s6bw'},
+    {id:'s6sbn',name:'SBN COMPANY',parentId:'s6'},
+    {id:'s6sbn_s',name:'دراسات',parentId:'s6sbn'},
+    {id:'s6sbn_p',name:'صور',parentId:'s6sbn'},
+    {id:'s6sbn_c',name:'عقود',parentId:'s6sbn'},
+    {id:'s6sbn_b',name:'فواتير',parentId:'s6sbn'},
+    {id:'s6sbn_v',name:'فيديو',parentId:'s6sbn'},
+    {id:'s6sbn_m',name:'مخططات هندسية',parentId:'s6sbn'},
+    {id:'s6td',name:'Tendam company',parentId:'s6'},
+    {id:'s6td_s',name:'دراسات',parentId:'s6td'},
+    {id:'s6td_p',name:'صور',parentId:'s6td'},
+    {id:'s6td_c',name:'عقود',parentId:'s6td'},
+    {id:'s6td_b',name:'فواتير',parentId:'s6td'},
+    {id:'s6td_v',name:'فيديو',parentId:'s6td'},
+    {id:'s6td_m',name:'مخططات هندسية',parentId:'s6td'},
+    {id:'s6ptime',name:'Play time (المشروع)',parentId:'s6'},
+    {id:'s6pt_dsgn',name:'Playtime design',parentId:'s6ptime'},
+    {id:'s6pt_rep',name:'تقارير ودراسات',parentId:'s6ptime'},
+    {id:'s6pt_maps',name:'خرائط تنفيذية',parentId:'s6ptime'},
+    {id:'s6pt_p',name:'صور',parentId:'s6ptime'},
+    {id:'s6pt_c',name:'عقود',parentId:'s6ptime'},
+    {id:'s6pt_b',name:'فواتير',parentId:'s6ptime'},
+    {id:'s6pt_v',name:'فيديو',parentId:'s6ptime'},
+    {id:'s6pt_m',name:'مخططات',parentId:'s6ptime'},
+    {id:'s6pt_f',name:'ملفات',parentId:'s6ptime'},
+    {id:'s6pt_i',name:'هويات',parentId:'s6ptime'},
+    {id:'s6pt_fa',name:'واجهات',parentId:'s6ptime'},
+    {id:'s6arc',name:'Arcadia and sahara',parentId:'s6'},
+    {id:'s6arc_sch',name:'جداول زمنية',parentId:'s6arc'},
+    {id:'s6arc_c',name:'عقود',parentId:'s6arc'},
+    {id:'s6arc_b',name:'فواتير',parentId:'s6arc'},
+    {id:'s6arc_o',name:'قائمة الطلبات',parentId:'s6arc'},
+    {id:'s6ats',name:'ATS شركة الالعاب التركية',parentId:'s6'},
+    // قطاع الشؤون اللوجستية والدعم (Logistics & Support)
+    {id:'s7',name:'قطاع الشؤون اللوجستية والدعم',parentId:null},
+    {id:'s7c1',name:'مخازن',parentId:'s7'},
+    {id:'s7c2',name:'مستندات مترجمة',parentId:'s7'},
   ];
   DB.documents = [
-    {id:genId(),docNum:'DOC-2024-0001',title:'عقد توريد معدات تقنية',type:'عقد',category:'c1',dept:'التقنية',section:'تقنية المعلومات',project:'مشروع رقمنة الوثائق',source:'شركة التقنية المتقدمة',client:'شركة التقنية',issue:today(),expiry:'2025-06-30',confidential:'سري',keywords:'عقد، توريد، تقنية، معدات',notes:'عقد سنوي قابل للتجديد',ocr:'',files:'contract_tech.pdf',status:'approved',approvedBy:'admin',approvedDate:today(),signature:{name:'أحمد محمد',title:'المدير العام',date:today()},tracking:[{user:'admin',action:'إضافة',date:now()},{user:'admin',action:'اعتماد',date:now()}]},
-    {id:genId(),docNum:'DOC-2024-0002',title:'تقرير الأداء المالي الربع الثالث',type:'تقرير',category:'c2',dept:'المالية',section:'المراجعة',project:'',source:'إدارة المالية',client:'',issue:'2024-09-30',expiry:'2025-09-30',confidential:'داخلي',keywords:'تقرير، مالية، أداء، ربع',notes:'',ocr:'',files:'q3_report.pdf',status:'approved',approvedBy:'admin',approvedDate:'2024-10-01',signature:null,tracking:[{user:'admin',action:'إضافة',date:now()}]},
-    {id:genId(),docNum:'DOC-2024-0003',title:'مخطط التوسعة الهندسية — المرحلة الثانية',type:'مخطط هندسي',category:'c4',dept:'المشاريع',section:'الهندسة',project:'مشروع التوسعة أ',source:'مكتب الاستشارات الهندسية',client:'',issue:'2024-07-15',expiry:'2025-07-15',confidential:'سري',keywords:'مخطط، هندسة، توسعة، مرحلة ثانية',notes:'يتضمن المخططات التفصيلية للمرحلة الثانية',ocr:'',files:'expansion_phase2.dwg',status:'active',approvedBy:'',approvedDate:'',signature:null,tracking:[{user:'admin',action:'إضافة',date:now()}]},
-    {id:genId(),docNum:'DOC-2025-0001',title:'ترخيص مزاولة النشاط التجاري',type:'ترخيص',category:'c6',dept:'الإدارة العامة',section:'الشؤون الإدارية',project:'',source:'وزارة التجارة',client:'',issue:'2025-01-01',expiry:'2025-04-15',confidential:'عام',keywords:'ترخيص، تجاري، وزارة التجارة',notes:'',ocr:'',files:'license_2025.pdf',status:'active',approvedBy:'',approvedDate:'',signature:null,tracking:[{user:'admin',action:'إضافة',date:now()}]},
+    {id:genId(),docNum:'DOC-2024-0001',title:'عقد توريد معدات تقنية',type:'عقد',category:'s6bz',dept:'التقنية',section:'تقنية المعلومات',project:'مشروع رقمنة الوثائق',source:'شركة التقنية المتقدمة',client:'شركة التقنية',issue:today(),expiry:'2025-06-30',confidential:'سري',keywords:'عقد، توريد، تقنية، معدات',notes:'عقد سنوي قابل للتجديد',ocr:'',files:'contract_tech.pdf',status:'approved',approvedBy:'admin',approvedDate:today(),signature:{name:'أحمد محمد',title:'المدير العام',date:today()},tracking:[{user:'admin',action:'إضافة',date:now()},{user:'admin',action:'اعتماد',date:now()}]},
+    {id:genId(),docNum:'DOC-2024-0002',title:'تقرير الأداء المالي الربع الثالث',type:'تقرير',category:'s4c1',dept:'المالية',section:'المراجعة',project:'',source:'إدارة المالية',client:'',issue:'2024-09-30',expiry:'2025-09-30',confidential:'داخلي',keywords:'تقرير، مالية، أداء، ربع',notes:'',ocr:'',files:'q3_report.pdf',status:'approved',approvedBy:'admin',approvedDate:'2024-10-01',signature:null,tracking:[{user:'admin',action:'إضافة',date:now()}]},
+    {id:genId(),docNum:'DOC-2024-0003',title:'مخطط التوسعة الهندسية — المرحلة الثانية',type:'مخطط هندسي',category:'s6ptime',dept:'المشاريع',section:'الهندسة',project:'مشروع التوسعة أ',source:'مكتب الاستشارات الهندسية',client:'',issue:'2024-07-15',expiry:'2025-07-15',confidential:'سري',keywords:'مخطط، هندسة، توسعة، مرحلة ثانية',notes:'يتضمن المخططات التفصيلية للمرحلة الثانية',ocr:'',files:'expansion_phase2.dwg',status:'active',approvedBy:'',approvedDate:'',signature:null,tracking:[{user:'admin',action:'إضافة',date:now()}]},
+    {id:genId(),docNum:'DOC-2025-0001',title:'ترخيص مزاولة النشاط التجاري',type:'ترخيص',category:'s1',dept:'الإدارة العامة',section:'الشؤون الإدارية',project:'',source:'وزارة التجارة',client:'',issue:'2025-01-01',expiry:'2025-04-15',confidential:'عام',keywords:'ترخيص، تجاري، وزارة التجارة',notes:'',ocr:'',files:'license_2025.pdf',status:'active',approvedBy:'',approvedDate:'',signature:null,tracking:[{user:'admin',action:'إضافة',date:now()}]},
   ];
   DB.settings.nextSeq = 5;
 }
@@ -2134,40 +2304,92 @@ function renderCatTree() {
   const roots=DB.categories.filter(c=>!c.parentId);
   document.getElementById('catTree').innerHTML=roots.map(c=>renderCatNode(c)).join('');
 }
-function renderCatNode(cat) {
+const _catExpanded = {};
+function renderCatNode(cat, depth) {
+  if(depth===undefined)depth=0;
   const children=DB.categories.filter(c=>c.parentId===cat.id);
-  return `<div>
-    <div class="folder-item ${selectedCat===cat.id?'active-folder':''}" onclick="selectCat('${cat.id}')">
-      <span>${selectedCat===cat.id?'📂':'📁'}</span> ${cat.name}
-      <button onclick="event.stopPropagation();addCategory('${cat.id}')" style="margin-right:auto;background:none;border:none;color:#3b82f6;cursor:pointer;font-size:16px;line-height:1">+</button>
-      <button onclick="event.stopPropagation();deleteCat('${cat.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;line-height:1">×</button>
+  const hasKids=children.length>0;
+  const expanded=_catExpanded[cat.id]!==false;
+  const isSel=selectedCat===cat.id;
+  const icon=isSel?'📂':(hasKids?(expanded?'📂':'📁'):'📄');
+  const toggleBtn=hasKids
+    ?`<button class="cat-toggle-btn ${expanded?'open':''}" onclick="event.stopPropagation();toggleCatExpand('${cat.id}')" title="${expanded?'طي':'توسيع'}">▶</button>`
+    :'<span style="width:20px;flex-shrink:0"></span>';
+  const childrenHTML=hasKids&&expanded?`<div class="folder-children">${children.map(c=>renderCatNode(c,depth+1)).join('')}</div>`:'';
+  return `<div class="cat-node">
+    <div class="folder-item ${isSel?'active-folder':''}" onclick="selectCat('${cat.id}')">
+      ${toggleBtn}
+      <span style="font-size:14px;flex-shrink:0">${icon}</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${cat.name}">${cat.name}</span>
+      <button onclick="event.stopPropagation();addCategory('${cat.id}')" style="background:none;border:none;color:#3b82f6;cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;padding:0 2px" title="إضافة فرعي">+</button>
+      <button onclick="event.stopPropagation();deleteCat('${cat.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;padding:0 2px" title="حذف">×</button>
     </div>
-    ${children.length?`<div class="folder-children">${children.map(c=>renderCatNode(c)).join('')}</div>`:''}
+    ${childrenHTML}
   </div>`;
 }
+function toggleCatExpand(id){
+  _catExpanded[id]=!(_catExpanded[id]!==false);
+  renderCatTree();
+}
 function selectCat(id) { selectedCat=id; renderCatTree(); showCatDocs(id); }
-function showCatDocs(id) {
+let _showSubcatDocs = false;
+function showCatDocs(id) { renderCatDocsPanel(id); }
+function _getCatDesc(cid) {
+  const ids=[cid];
+  DB.categories.filter(c=>c.parentId===cid).forEach(c=>ids.push(..._getCatDesc(c.id)));
+  return ids;
+}
+function renderCatDocsPanel(id) {
   const cat=DB.categories.find(c=>c.id===id);
-  const docs=DB.documents.filter(d=>d.category===id);
-  document.getElementById('catDocsArea').innerHTML=`<h4 style="font-size:13px;font-weight:700;color:#1e293b;margin:0 0 12px">📁 ${cat?.name} (${docs.length} وثيقة)</h4>`+
-    (docs.length?docs.map(d=>`<div style="padding:8px 12px;border-radius:8px;background:#f8fafc;margin-bottom:6px;cursor:pointer;font-size:13px;font-weight:600;color:#374151" onclick="viewDoc('${d.id}')">${d.docNum} — ${d.title}</div>`).join(''):'<p style="color:#94a3b8;font-size:13px">لا توجد وثائق في هذا التصنيف</p>');
+  if(!cat)return;
+  const directDocs=DB.documents.filter(d=>d.category===id);
+  const allIds=_getCatDesc(id);
+  const allDocs=DB.documents.filter(d=>allIds.includes(d.category));
+  const docs=_showSubcatDocs?allDocs:directDocs;
+  const extra=allDocs.length-directDocs.length;
+  const toggleRow=extra>0
+    ?`<label class="subcat-toggle"><input type="checkbox" ${_showSubcatDocs?'checked':''} onchange="_showSubcatDocs=this.checked;renderCatDocsPanel('${id}')"><span>إظهار وثائق التصنيفات الفرعية (${extra} إضافية)</span></label>`
+    :'';
+  const docsHTML=docs.length
+    ?docs.map(d=>`<div style="padding:8px 12px;border-radius:8px;background:#f8fafc;margin-bottom:6px;cursor:pointer;font-size:13px;font-weight:600;color:#374151;display:flex;align-items:center;gap:8px" onclick="viewDoc('${d.id}')">
+        <code style="font-size:11px;background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:4px;white-space:nowrap">${d.docNum}</code>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.title}</span>
+        <span style="font-size:11px;color:#94a3b8;white-space:nowrap">${d.dept||''}</span>
+      </div>`).join('')
+    :'<p style="color:#94a3b8;font-size:13px;text-align:center;padding:20px 0">لا توجد وثائق في هذا التصنيف</p>';
+  document.getElementById('catDocsArea').innerHTML=
+    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+       <h4 style="font-size:13px;font-weight:700;color:#1e293b;margin:0">📁 ${cat.name} (${docs.length} وثيقة)</h4>
+       <button class="btn btn-sm btn-primary" onclick="addCatDocDirect('${id}')">+ إضافة وثيقة</button>
+     </div>`+toggleRow+docsHTML;
+}
+function addCatDocDirect(catId) {
+  goPage('addDoc');
+  setTimeout(()=>{setupAddDocForm(null);const s=document.getElementById('fCategory');if(s)s.value=catId;},80);
 }
 function addCategory(parentId) {
-  const name=prompt(parentId?'اسم التصنيف الفرعي:':'اسم التصنيف الرئيسي:');
+  const parent=parentId?DB.categories.find(c=>c.id===parentId):null;
+  const label=parent?`تصنيف فرعي تحت "${parent.name}"`:'تصنيف رئيسي جديد';
+  const name=prompt('اسم '+label+':');
   if(!name?.trim())return;
-  DB.categories.push({id:genId(),name:name.trim(),parentId:parentId||null});
+  const nid=genId();
+  DB.categories.push({id:nid,name:name.trim(),parentId:parentId||null});
+  if(parentId)_catExpanded[parentId]=true;
   markDirty();renderCategories();
-  // Update doc filter
-  const catSel=document.getElementById('srchCat');
-  if(catSel)catSel.innerHTML='<option value="">كل التصنيفات</option>'+DB.categories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  populateCategoryDropdown('srchCat');
+  populateCategoryDropdown('fCategory');
 }
 function deleteCat(id) {
+  function desc(cid){const ch=DB.categories.filter(c=>c.parentId===cid);return[cid,...ch.flatMap(c=>desc(c.id))];}
+  const allIds=desc(id);
   const cat=DB.categories.find(c=>c.id===id);
-  const cnt=DB.documents.filter(d=>d.category===id).length;
-  if(cnt>0){toast(`لا يمكن حذف "${cat?.name}" — يحتوي على ${cnt} وثيقة`,'error');return;}
-  DB.categories=DB.categories.filter(c=>c.id!==id&&c.parentId!==id);
-  if(selectedCat===id)selectedCat=null;
-  markDirty();renderCategories();
+  const cnt=DB.documents.filter(d=>allIds.includes(d.category)).length;
+  if(cnt>0){toast(`لا يمكن حذف "${cat?.name}" — يحتوي على ${cnt} وثيقة في هذا التصنيف أو فروعه`,'error');return;}
+  showConfirm('⚠️','حذف التصنيف',`سيتم حذف "${cat?.name}" وكل فروعه الفرعية (${allIds.length-1} فرع). متابعة؟`,()=>{
+    DB.categories=DB.categories.filter(c=>!allIds.includes(c.id));
+    if(allIds.includes(selectedCat))selectedCat=null;
+    markDirty();renderCategories();
+  });
 }
 
 // ====== TRASH ======
@@ -2218,8 +2440,56 @@ function emptyTrash() {
 
 // ====== OCR ======
 let ocrWorker = null;
-async function startOCR(input) {
+async function startOCRUnified(input) {
   const file=input.files[0];if(!file)return;
+  if(file.type==='application/pdf'){await startPDFOCR(file);}
+  else{await startImageOCR(file);}
+  input.value='';
+}
+async function startOCR(input) { await startOCRUnified(input); }
+
+// ── OCR text cleaner ──
+function cleanOCRText(raw) {
+  if(!raw)return '';
+  let lines = raw.split('\n');
+  // Remove lines that are pure noise: single chars, only symbols/numbers alone, empty
+  lines = lines.map(l => l.trim());
+  lines = lines.filter(l => {
+    if(!l)return false;
+    // Keep if has 2+ Arabic or Latin letters
+    const arabicCount = (l.match(/[\u0600-\u06FF]/g)||[]).length;
+    const latinCount  = (l.match(/[a-zA-Z]/g)||[]).length;
+    if(arabicCount >= 2 || latinCount >= 2) return true;
+    // Keep numbers with context (≥ 3 chars)
+    if(l.length >= 3 && /\d/.test(l)) return true;
+    return false;
+  });
+  // Collapse 3+ consecutive blank lines to 1
+  let out = [], blanks = 0;
+  for(const l of lines){
+    if(!l){blanks++;if(blanks<=1)out.push('');}
+    else{blanks=0;out.push(l);}
+  }
+  // Normalize Arabic: unify Alef forms, remove tatweel
+  let text = out.join('\n');
+  text = text.replace(/[\u0640]/g,'');          // remove tatweel
+  text = text.replace(/[أإآٱ]/g,'ا');           // unify alef
+  text = text.replace(/ة/g,'ه');                // unify teh marbuta (optional)
+  text = text.replace(/ى/g,'ي');               // unify alef maqsura
+  text = text.replace(/ {2,}/g,' ');            // collapse multi-spaces
+  return text.trim();
+}
+
+async function ensureTesseract() {
+  if(typeof Tesseract!=='undefined')return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload=res;s.onerror=rej;document.head.appendChild(s);
+  });
+}
+
+async function startImageOCR(file) {
   const url=URL.createObjectURL(file);
   const img=document.getElementById('ocrImg');
   img.src=url;document.getElementById('ocrImgPreview').style.display='';
@@ -2229,31 +2499,186 @@ async function startOCR(input) {
   document.getElementById('ocrFill').style.width='0%';
   document.getElementById('ocrStatus').textContent='جاري التهيئة...';
   try {
-    if(typeof Tesseract==='undefined'){
-      await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
-    }
+    await ensureTesseract();
     const w=await Tesseract.createWorker(['ara','eng'],1,{
       logger:m=>{
         document.getElementById('ocrStatus').textContent=m.status||'...';
         if(m.status==='recognizing text'){const p=Math.round(m.progress*100);document.getElementById('ocrPct').textContent=p+'%';document.getElementById('ocrFill').style.width=p+'%';}
       }
     });
+    // Better parameters for mixed Arabic/English docs
+    await w.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.AUTO,  // 3 = fully automatic
+      preserve_interword_spaces: '1',
+      tessjs_create_hocr: '0',
+      tessjs_create_tsv: '0',
+    });
     const {data:{text}}=await w.recognize(file);
     await w.terminate();
-    document.getElementById('ocrTxt').value=text.trim();
+    const cleaned = cleanOCRText(text);
+    document.getElementById('ocrTxt').value=cleaned;
+    document.getElementById('ocrCharCount').textContent=cleaned.length+' حرف';
     document.getElementById('ocrProgress').style.display='none';
     document.getElementById('ocrOutput').style.display='';
   } catch(e) {
     document.getElementById('ocrProgress').style.display='none';
     toast('خطأ في OCR: '+e.message,'error');
   }
-  input.value='';
+}
+
+function cleanOCROutput() {
+  const el=document.getElementById('ocrTxt');
+  const before=el.value;
+  el.value=cleanOCRText(before);
+  document.getElementById('ocrCharCount').textContent=el.value.length+' حرف';
+  if(el.value.length < before.length) toast('تم تنظيف النص — حُذف '+(before.length-el.value.length)+' حرف غير مفيد','success');
+  else toast('النص نظيف بالفعل','info');
+}
+
+// ── Keyword extraction (OCR page) ──
+function extractKeywordsFromOCRPage() {
+  const text = document.getElementById('ocrTxt').value;
+  const kw = _extractKeywords(text);
+  if(!kw.length){toast('لم يُعثر على كلمات مفتاحية','warn');return;}
+  document.getElementById('ocrKeywordsList').textContent = kw.join(' ، ');
+  document.getElementById('ocrKeywordsOut').style.display='';
+  toast('تم اقتراح '+kw.length+' كلمة مفتاحية','success');
+}
+
+let _pendingOCRKeywords = '';
+function applyOCRKeywordsToDoc() {
+  _pendingOCRKeywords = document.getElementById('ocrKeywordsList').textContent;
+  useOCRInDoc();
+}
+
+// ── Keyword extraction (add-doc form) ──
+function extractKeywordsFromOCR() {
+  const ocrText = document.getElementById('fOcr').value;
+  if(!ocrText.trim()){toast('لا يوجد نص OCR لاستخراج الكلمات منه','warn');return;}
+  const kw = _extractKeywords(ocrText);
+  if(!kw.length){toast('لم يُعثر على كلمات مفتاحية','warn');return;}
+  const cur = document.getElementById('fKeywords').value.trim();
+  document.getElementById('fKeywords').value = cur ? cur+', '+kw.join(', ') : kw.join(', ');
+  toast('تم اقتراح '+kw.length+' كلمة مفتاحية','success');
+}
+
+// ── Shared keyword extractor ──
+function _extractKeywords(text) {
+  if(!text || !text.trim()) return [];
+  // Stop words (Arabic + English)
+  const stopAr = new Set(['من','إلى','في','على','عن','مع','هذا','هذه','التي','الذي','كان','يكون','تكون','وكان','لقد','قد','أن','أو','لا','ما','هو','هي','هم','نحن','انت','أنت','كل','أي','إي','وفي','ومن','وعلى','إلا','ولا','بعد','قبل','بين','خلال','عند','لكن','أما','كما','أيضا','حتى','إذا','لذلك','بعض','غير','ليس']);
+  const stopEn = new Set(['the','a','an','and','or','of','in','on','at','to','for','is','are','was','were','be','been','by','with','this','that','it','its','from','as','but','not','have','has','had','do','did','will','would','can','could','may','might','than','then','when','where','which','who']);
+  const words = text
+    .replace(/[^\u0600-\u06FFa-zA-Z0-9\s]/g,'')
+    .split(/\s+/)
+    .map(w=>w.trim())
+    .filter(w => w.length > 2);
+  const freq = {};
+  words.forEach(w => {
+    const lw = w.toLowerCase();
+    if(stopAr.has(w) || stopEn.has(lw)) return;
+    if(/^\d+$/.test(w)) return; // skip pure numbers
+    freq[w] = (freq[w]||0)+1;
+  });
+  return Object.entries(freq)
+    .filter(([,c])=>c>=1)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,12)
+    .map(([w])=>w);
+}
+
+async function ensurePDFJS() {
+  if(window.pdfjsLib)return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+    s.onload=()=>{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';res();};
+    s.onerror=rej;document.head.appendChild(s);
+  });
+}
+
+async function startPDFOCR(file) {
+  const pg=document.getElementById('pdfOcrProgress');
+  const fill=document.getElementById('pdfFill');
+  const pct=document.getElementById('pdfPct');
+  const stat=document.getElementById('pdfStatus');
+  if(pg){pg.style.display='';fill.style.width='0%';pct.textContent='0%';stat.textContent='جارٍ تحميل ملف PDF...';}
+  document.getElementById('ocrOutput').style.display='none';
+  document.getElementById('ocrImgPreview').style.display='none';
+  try {
+    await ensurePDFJS();
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    const total=pdf.numPages;
+    let fullText='',pagesWithText=0;
+    // Pass 1: extract digital text layer
+    for(let p=1;p<=total;p++){
+      const page=await pdf.getPage(p);
+      const tc=await page.getTextContent();
+      const pt=tc.items.map(i=>i.str).join(' ').trim();
+      if(pt.length>20){pagesWithText++;fullText+=(fullText?`\n\n— صفحة ${p} —\n`:'')+pt;}
+      if(fill){fill.style.width=Math.round(p/total*50)+'%';pct.textContent=Math.round(p/total*50)+'%';}
+      if(stat)stat.textContent=`فحص الطبقة النصية — صفحة ${p} من ${total}`;
+    }
+    if(pagesWithText>=total*0.5){
+      if(pg)pg.style.display='none';
+      document.getElementById('ocrTxt').value=fullText.trim();
+      document.getElementById('ocrOutput').style.display='';
+      toast(`✅ استُخرج النص من ${total} صفحة PDF (رقمي)`,'success');
+      return;
+    }
+    // Pass 2: OCR on rendered images
+    if(stat)stat.textContent='النص الرقمي غير مكتمل — بدء OCR على الصور...';
+    if(typeof Tesseract==='undefined'){
+      await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+    }
+    const worker=await Tesseract.createWorker(['ara','eng'],1,{logger:()=>{}});
+    const canvas=document.createElement('canvas');
+    let ocrText='';
+    for(let p=1;p<=total;p++){
+      if(stat)stat.textContent=`OCR — صفحة ${p} من ${total}`;
+      const page=await pdf.getPage(p);
+      const vp=page.getViewport({scale:2.0});
+      canvas.width=vp.width;canvas.height=vp.height;
+      await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+      const blob=await new Promise(r=>canvas.toBlob(r,'image/png'));
+      const {data:{text}}=await worker.recognize(blob);
+      if(text.trim())ocrText+=(ocrText?`\n\n— صفحة ${p} —\n`:'')+text.trim();
+      const pp=50+Math.round(p/total*50);
+      if(fill){fill.style.width=pp+'%';pct.textContent=pp+'%';}
+    }
+    await worker.terminate();
+    if(pg)pg.style.display='none';
+    const cleaned2=cleanOCRText(ocrText)||'لم يُتمكن من استخراج نص من هذا الملف';
+    document.getElementById('ocrTxt').value=cleaned2;
+    document.getElementById('ocrCharCount').textContent=cleaned2.length+' حرف';
+    document.getElementById('ocrOutput').style.display='';
+    toast(`✅ اكتمل OCR لـ ${total} صفحة`,'success');
+  } catch(e){
+    if(pg)pg.style.display='none';
+    toast('خطأ في معالجة PDF: '+e.message,'error');
+  }
 }
 function copyOCR(){navigator.clipboard.writeText(document.getElementById('ocrTxt').value);toast('تم النسخ');}
 function useOCRInDoc(){
   const txt=document.getElementById('ocrTxt').value;
+  const kw=_pendingOCRKeywords;
+  _pendingOCRKeywords='';
   goPage('addDoc');
-  setTimeout(()=>{setupAddDocForm(null);document.getElementById('fOcr').value=txt;},60);
+  setTimeout(()=>{
+    setupAddDocForm(null);
+    document.getElementById('fOcr').value=txt;
+    if(kw){
+      const kf=document.getElementById('fKeywords');
+      if(kf)kf.value=kw;
+    }
+    // auto-suggest keywords from OCR text
+    if(txt && !kw){
+      const suggested=_extractKeywords(txt).slice(0,8).join(', ');
+      const kf=document.getElementById('fKeywords');
+      if(kf && !kf.value && suggested) kf.value=suggested;
+    }
+  },80);
 }
 function resetOCR(){
   document.getElementById('ocrImgPreview').style.display='none';
@@ -2264,7 +2689,8 @@ function resetOCR(){
 // ====== AUTO OCR IN ADD DOC FORM ======
 let lastOCRFile = null;
 async function runAutoOCR(file) {
-  if (!file || !file.type.startsWith('image/')) return;
+  if (!file || (!file.type.startsWith('image/') && file.type !== 'application/pdf')) return;
+  if (file.type === 'application/pdf') { await startPDFOCR(file).catch(e=>toast('PDF OCR: '+e.message,'error')); return; }
   lastOCRFile = file;
   const loading = document.getElementById('ocrLoading');
   const warning = document.getElementById('ocrWarning');
@@ -2293,10 +2719,17 @@ async function runAutoOCR(file) {
     }
     
     const w = await Tesseract.createWorker(['ara', 'eng'], 1);
+    await w.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM?.AUTO ?? 3,
+      preserve_interword_spaces: '1',
+    });
     const { data: { text } } = await w.recognize(file);
     await w.terminate();
     
-    ocrField.value = text.trim();
+    ocrField.value = cleanOCRText(text);
+    // auto-fill keywords
+    const kf = document.getElementById('fKeywords');
+    if(kf && !kf.value) kf.value = _extractKeywords(ocrField.value).slice(0,8).join(', ');
     toast('تم استخراج النص بنجاح', 'success');
   } catch (e) {
     loading.style.display = 'none';
@@ -2305,33 +2738,6 @@ async function runAutoOCR(file) {
   } finally {
     loading.style.display = 'none';
   }
-}
-
-function extractKeywordsFromOCR() {
-  const ocrText = document.getElementById('fOcr').value;
-  if (!ocrText.trim()) {
-    toast('لا يوجد نص OCR لاستخراج الكلمات منه', 'warn');
-    return;
-  }
-  
-  // Simple keyword extraction: get words that appear frequently or are longer
-  const words = ocrText.split(/\s+/).filter(w => w.length > 3);
-  const freq = {};
-  words.forEach(w => {
-    const clean = w.replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z]/g, '').toLowerCase();
-    if (clean) freq[clean] = (freq[clean] || 0) + 1;
-  });
-  
-  const keywords = Object.entries(freq)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(e => e[0])
-    .join(', ');
-  
-  const currentKeywords = document.getElementById('fKeywords').value;
-  const newKeywords = currentKeywords ? currentKeywords + ', ' + keywords : keywords;
-  document.getElementById('fKeywords').value = newKeywords;
-  toast('تم اقتراح كلمات مفتاحية', 'success');
 }
 
 async function pasteFromClipboard() {
@@ -2556,7 +2962,7 @@ function addSection(deptIdx){const n=prompt('اسم القسم:');if(n?.trim()){
 function deleteSection(di,si){DB.structure.departments[di].sections.splice(si,1);markDirty();renderStructure();}
 function addProject(){const n=prompt('اسم المشروع:');if(n?.trim()){DB.structure.projects.push(n.trim());markDirty();renderStructure();}}
 function deleteProject(i){DB.structure.projects.splice(i,1);markDirty();renderStructure();}
-function addBranch(){const n=prompt('اسم الفرع:');if(n?.trim()){DB.structure.branches.push(n.trim());markDirty();renderStructure();}}
+function addBranch(){const n=prompt('اسم المدينة أو الفرع الجديد:');if(n?.trim()){DB.structure.branches.push(n.trim());markDirty();renderStructure();}}
 function deleteBranch(i){DB.structure.branches.splice(i,1);markDirty();renderStructure();}
 
 // ====== AUDIT ======
@@ -2698,10 +3104,7 @@ function safeJSON(val,def){try{return val?JSON.parse(val):def;}catch{return def;
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
-    // لا تُفعِّل الحفظ إذا كان المستخدم يكتب في حقل نصي داخل نموذج
-    const tag = document.activeElement?.tagName;
-    const inForm = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-    if (currentUser && !inForm) saveWithFSA();
+    if (currentUser) saveWithFSA();
   }
 });
 
@@ -2709,6 +3112,18 @@ document.addEventListener('keydown', e => {
 window.addEventListener('beforeunload', e => {
   if (isDirty) { e.preventDefault(); e.returnValue = 'لديك تعديلات غير محفوظة. هل تريد المغادرة؟'; }
 });
+
+// ====== MOBILE SIDEBAR ======
+function toggleMobileSidebar() {
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  const open=sb.classList.toggle('mobile-open');
+  ov.style.display=open?'block':'none';
+}
+function closeMobileSidebar() {
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebarOverlay').style.display='none';
+}
 
 // ====== STARTUP ======
 window.addEventListener('DOMContentLoaded', () => {
