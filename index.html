@@ -1522,11 +1522,19 @@ function doLogout() {
 }
 
 // تنزيل مباشر بدون file picker — للاستخدام عند الخروج فقط
-function directDownload() {
-  const wb = bh_buildWorkbookChunked();
-  const ts = new Date();
-  const fn = `Brandzo_${ts.getFullYear()}${String(ts.getMonth()+1).padStart(2,'0')}${String(ts.getDate()).padStart(2,'0')}_${String(ts.getHours()).padStart(2,'0')}${String(ts.getMinutes()).padStart(2,'0')}.xlsx`;
-  XLSX.writeFile(wb, fn);
+async function directDownload() {
+  try {
+    bh_showExportProgress('جارٍ تصدير ملف Excel', 0, 'إعداد قاعدة البيانات...');
+    const wb = await bh_buildWorkbookChunkedAsync({ onProgress: (p) => bh_showExportProgress(p.title, p.percent, p.detail) });
+    const ts = new Date();
+    const fn = `Brandzo_${ts.getFullYear()}${String(ts.getMonth()+1).padStart(2,'0')}${String(ts.getDate()).padStart(2,'0')}_${String(ts.getHours()).padStart(2,'0')}${String(ts.getMinutes()).padStart(2,'0')}.xlsx`;
+    XLSX.writeFile(wb, fn);
+    bh_hideExportProgress();
+  } catch (e) {
+    bh_hideExportProgress();
+    console.error('Direct download failed:', e);
+    toast(`❌ فشل التصدير: ${e.message}`, 'error', 10000);
+  }
 }
 
 function performLogout() {
@@ -1587,7 +1595,8 @@ function buildWorkbook() {
 //   forcePicker  — true = always open file picker (even if handle exists) → "حفظ كـ" behaviour
 async function saveWithFSA(closeAfter = false, forcePicker = false) {
   if (!currentUser) return;
-  const wb  = bh_buildWorkbookChunked();
+  bh_showExportProgress('جارٍ حفظ ملف Excel', 0, 'إعداد البيانات...');
+  const wb  = await bh_buildWorkbookChunkedAsync({ onProgress: (p) => bh_showExportProgress(p.title, p.percent, p.detail) });
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
   const ts  = new Date();
   const suggestedName = `Brandzo_${ts.getFullYear()}${String(ts.getMonth()+1).padStart(2,'0')}${String(ts.getDate()).padStart(2,'0')}.xlsx`;
@@ -1608,6 +1617,7 @@ async function saveWithFSA(closeAfter = false, forcePicker = false) {
       await writable.close();
       markClean();
       updateFSAIndicator();
+      bh_hideExportProgress();
       await opfsBackup();
       clearOPFSBackup();
       toast('💾 محفوظ: ' + fsaFileHandle.name, 'success', 3500);
@@ -1624,6 +1634,7 @@ async function saveWithFSA(closeAfter = false, forcePicker = false) {
   XLSX.writeFile(wb, suggestedName);
   markClean();
   updateFSAIndicator();
+  bh_hideExportProgress();
   toast('💾 تم التنزيل: ' + suggestedName, 'success', 4000);
   if (closeAfter) setTimeout(() => toast('✅ جاهز للإغلاق — يمكنك إغلاق النافذة الآن', 'success', 8000), 1500);
 }
@@ -1649,7 +1660,7 @@ async function opfsBackup() {
   if (!navigator.storage?.getDirectory) return;
   try {
     const root = await navigator.storage.getDirectory();
-    const wb = bh_buildWorkbookChunked();
+    const wb = await bh_buildWorkbookChunkedAsync({ onProgress: () => {} });
     const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     // Write data
     const fh = await root.getFileHandle('brandzo_backup.xlsx', { create: true });
@@ -3344,7 +3355,8 @@ function showNotifications() {
 }
 
 function addSheet(wb,data,name) {
-  const ws=XLSX.utils.aoa_to_sheet(data);
+  const safeData = Array.isArray(data) ? data.map(row => Array.isArray(row) ? row.map(v => bh_sanitizeExcelCell(v, name)) : [bh_sanitizeExcelCell(row, name)]) : [];
+  const ws=XLSX.utils.aoa_to_sheet(safeData);
   XLSX.utils.book_append_sheet(wb,ws,name);
 }
 
@@ -3409,30 +3421,6 @@ function bh_initFloatingExport() {
   document.body.appendChild(checkmark);
 }
 
-function bh_triggerFullExport() {
-  try {
-    const wb = bh_buildWorkbookChunked();
-    const ts = new Date();
-    const fn = `Brandzo_Full_${ts.getFullYear()}${String(ts.getMonth()+1).padStart(2,'0')}${String(ts.getDate()).padStart(2,'0')}_${String(ts.getHours()).padStart(2,'0')}${String(ts.getMinutes()).padStart(2,'0')}.xlsx`;
-    const success = bh_writeWorkbookChunked(wb, fn);
-    
-    if (success) {
-      bh_docsSinceLastSave = 0;
-      
-      const checkmark = document.getElementById('bh_export_checkmark');
-      if (checkmark) {
-        checkmark.classList.add('show');
-        setTimeout(() => checkmark.classList.remove('show'), 2000);
-      }
-    } else {
-      toast('فشل التصدير - قد تكون البيانات كبيرة جداً', 'error');
-    }
-  } catch (e) {
-    console.error('Export failed:', e);
-    toast('فشل التصدير', 'error');
-  }
-}
-
 function bh_trackDocumentAdded() {
   bh_docsSinceLastSave++;
   if (bh_docsSinceLastSave > 0 && bh_docsSinceLastSave % 10 === 0) {
@@ -3446,58 +3434,275 @@ function bh_resetSaveCounter() {
 
 // ====== PATCH: Enhanced Excel Capacity ======
 const BH_MAX_ROWS = 500000;
-const BH_CHUNK_SIZE = 50000;
+const BH_CHUNK_SIZE = 200;
+const BH_MAX_EXCEL_CELL_LEN = 32767;
+const BH_TRUNCATE_NOTICE = '⚠ النص الكامل مبتور — الطول الأصلي';
+let bh_exportBusy = false;
+let bh_exportOverlay = null;
+
+function bh_sanitizeExcelCell(value, fieldName = 'cell') {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' || typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    if (value.length <= BH_MAX_EXCEL_CELL_LEN) return value;
+    return `${value.slice(0, 32000)}\n${BH_TRUNCATE_NOTICE} ${value.length} حرف`;
+  }
+  try {
+    const text = JSON.stringify(value);
+    if (text.length <= BH_MAX_EXCEL_CELL_LEN) return text;
+    return `${text.slice(0, 32000)}\n${BH_TRUNCATE_NOTICE} ${text.length} حرف`;
+  } catch (e) {
+    console.error('Excel sanitization failed for', fieldName, e);
+    return String(value);
+  }
+}
+
+function bh_sanitizeSheetRows(headers, rows) {
+  return [headers, ...rows.map(row => row.map((cell, idx) => bh_sanitizeExcelCell(cell, headers[idx] || 'cell')))]
+}
+
+function bh_buildDocumentExportRow(doc) {
+  try {
+    return [
+      doc.id,
+      doc.docNum,
+      doc.title || '',
+      doc.type || '',
+      doc.category || '',
+      doc.dept || '',
+      doc.section || '',
+      doc.project || '',
+      doc.source || '',
+      doc.client || '',
+      doc.confidential || 'عام',
+      doc.issue || '',
+      doc.expiry || '',
+      doc.status || 'active',
+      doc.approvedBy || '',
+      doc.approvedDate || '',
+      doc.files || '',
+      doc.keywords || '',
+      doc.notes || '',
+      bh_sanitizeExcelCell(doc.ocr || '', `Documents/ocr:${doc.docNum || doc.id}`),
+      doc.filePath || '',
+      bh_sanitizeExcelCell(JSON.stringify(doc.signature || null), `Documents/signature:${doc.docNum || doc.id}`),
+      bh_sanitizeExcelCell(JSON.stringify(doc.tracking || []), `Documents/tracking:${doc.docNum || doc.id}`)
+    ];
+  } catch (e) {
+    throw new Error(`فشل تجهيز الوثيقة ${doc.docNum || doc.id}: ${e.message}`);
+  }
+}
+
+function bh_showExportProgress(title, percent, detail) {
+  if (!bh_exportOverlay) {
+    bh_exportOverlay = document.createElement('div');
+    bh_exportOverlay.style.position = 'fixed';
+    bh_exportOverlay.style.top = '0';
+    bh_exportOverlay.style.left = '0';
+    bh_exportOverlay.style.right = '0';
+    bh_exportOverlay.style.bottom = '0';
+    bh_exportOverlay.style.background = 'rgba(15, 23, 42, 0.72)';
+    bh_exportOverlay.style.display = 'flex';
+    bh_exportOverlay.style.alignItems = 'center';
+    bh_exportOverlay.style.justifyContent = 'center';
+    bh_exportOverlay.style.zIndex = '99999';
+    bh_exportOverlay.innerHTML = `
+      <div style="width:min(92vw, 520px);background:#fff;border-radius:16px;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+        <div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:8px" id="bh_export_progress_title"></div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:10px" id="bh_export_progress_detail"></div>
+        <div style="height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden">
+          <div id="bh_export_progress_bar" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);transition:width .25s ease"></div>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:#475569;text-align:right" id="bh_export_progress_pct">0%</div>
+      </div>`;
+    document.body.appendChild(bh_exportOverlay);
+  }
+  bh_exportOverlay.style.display = 'flex';
+  document.getElementById('bh_export_progress_title').textContent = title;
+  document.getElementById('bh_export_progress_detail').textContent = detail || '';
+  document.getElementById('bh_export_progress_bar').style.width = `${Math.max(0, Math.min(100, percent))}%`;
+  document.getElementById('bh_export_progress_pct').textContent = `${Math.round(percent)}%`;
+}
+
+function bh_hideExportProgress() {
+  if (bh_exportOverlay) bh_exportOverlay.style.display = 'none';
+}
 
 function bh_buildWorkbookChunked() {
   const wb = XLSX.utils.book_new();
-  
-  // Helper to chunk large arrays
-  function chunkArray(array, size) {
-    const chunks = [];
-    for (let i = 0; i < array.length; i += size) {
-      chunks.push(array.slice(i, i + size));
+
+  const usersHeaders = ['id','name','password','dept','section','role','permissions','twoFA','twoFACode','lastLogin'];
+  const usersRows = DB.users.slice(0, BH_MAX_ROWS).map(u => [u.id, u.name, u.password, u.dept || '', u.section || '', u.role, JSON.stringify(u.permissions || {}), u.twoFA ? 1 : 0, u.twoFACode || '', u.lastLogin || '']);
+  addSheet(wb, [usersHeaders, ...usersRows], 'Users');
+
+  const docsHeaders = ['id','docNum','title','type','category','dept','section','project','source','client','confidential','issue','expiry','status','approvedBy','approvedDate','files','keywords','notes','ocr','filePath','signature','tracking'];
+  const docsRows = DB.documents.slice(0, BH_MAX_ROWS).map(doc => bh_buildDocumentExportRow(doc));
+  addSheet(wb, [docsHeaders, ...docsRows], 'Documents');
+
+  addSheet(wb, bh_sanitizeSheetRows(['id','docNum','version','oldTitle','oldData','user','date'], DB.versions.map(v => [v.id, v.docNum, v.version, v.oldTitle, v.oldData, v.user, v.date])), 'Versions');
+  addSheet(wb, bh_sanitizeSheetRows(['id','user','operation','docNum','details','datetime'], DB.audit.map(a => [a.id, a.user, a.operation, a.docNum, a.details, a.datetime])), 'Audit_Log');
+  addSheet(wb, bh_sanitizeSheetRows(['doc','deletedBy','deletedAt'], DB.trash.map(t => [JSON.stringify(t.doc), t.deletedBy, t.deletedAt])), 'Trash');
+  addSheet(wb, bh_sanitizeSheetRows(['id','name','parentId'], DB.categories.map(c => [c.id, c.name, c.parentId || ''])), 'Categories');
+  addSheet(wb, bh_sanitizeSheetRows(['type','id','name','data'], [...DB.structure.departments.map(d => ['dept', d.id, d.name, JSON.stringify(d.sections || [])]), ...DB.structure.projects.map(p => ['project', '', p, '']), ...DB.structure.branches.map(b => ['branch', '', b, ''])]), 'Structure');
+  addSheet(wb, bh_sanitizeSheetRows(['key','value'], Object.entries(DB.settings).map(([key, value]) => [key, value])), 'Settings');
+
+  return wb;
+}
+
+async function bh_buildWorkbookChunkedAsync(options = {}) {
+  const { onProgress } = options;
+  const wb = XLSX.utils.book_new();
+
+  const usersHeaders = ['id','name','password','dept','section','role','permissions','twoFA','twoFACode','lastLogin'];
+  const usersRows = DB.users.slice(0, BH_MAX_ROWS).map(u => [u.id, u.name, u.password, u.dept || '', u.section || '', u.role, JSON.stringify(u.permissions || {}), u.twoFA ? 1 : 0, u.twoFACode || '', u.lastLogin || '']);
+  addSheet(wb, [usersHeaders, ...usersRows], 'Users');
+
+  const docsHeaders = ['id','docNum','title','type','category','dept','section','project','source','client','confidential','issue','expiry','status','approvedBy','approvedDate','files','keywords','notes','ocr','filePath','signature','tracking'];
+  const docsWs = XLSX.utils.aoa_to_sheet([docsHeaders]);
+  XLSX.utils.book_append_sheet(wb, docsWs, 'Documents');
+
+  const totalDocs = Math.min(DB.documents.length, BH_MAX_ROWS);
+  for (let start = 0; start < totalDocs; start += BH_CHUNK_SIZE) {
+    const batch = DB.documents.slice(start, start + BH_CHUNK_SIZE);
+    try {
+      const rows = batch.map(doc => bh_buildDocumentExportRow(doc));
+      XLSX.utils.sheet_add_aoa(docsWs, rows, { origin: -1 });
+    } catch (err) {
+      throw new Error(`فشل تجهيز الوثائق في دفعة ${Math.floor(start / BH_CHUNK_SIZE) + 1}: ${err.message}`);
     }
-    return chunks;
+
+    const processed = Math.min(start + batch.length, totalDocs);
+    if (onProgress) {
+      onProgress({
+        title: 'جارٍ تجهيز ملف Excel',
+        percent: totalDocs ? (processed / totalDocs) * 100 : 100,
+        detail: `تمت معالجة ${processed} من ${totalDocs} وثيقة`
+      });
+    }
+    await new Promise(resolve => setTimeout(resolve, 0));
   }
-  
-  // Process users with chunking
-  const usersData = DB.users.slice(0, BH_MAX_ROWS).map(u=>[u.id,u.name,u.password,u.dept||'',u.section||'',u.role,JSON.stringify(u.permissions||{}),u.twoFA?1:0,u.twoFACode||'',u.lastLogin||'']);
-  addSheet(wb,[['id','name','password','dept','section','role','permissions','twoFA','twoFACode','lastLogin'],...usersData],'Users');
-  
-  // Process documents with chunking
-  const docsData = DB.documents.slice(0, BH_MAX_ROWS).map(d=>[d.id,d.docNum,d.title,d.type||'',d.category||'',d.dept||'',d.section||'',d.project||'',d.source||'',d.client||'',d.confidential||'عام',d.issue||'',d.expiry||'',d.status||'active',d.approvedBy||'',d.approvedDate||'',d.files||'',d.keywords||'',d.notes||'',d.ocr||'',d.filePath||'',JSON.stringify(d.signature||null),JSON.stringify(d.tracking||[])]);
-  addSheet(wb,[['id','docNum','title','type','category','dept','section','project','source','client','confidential','issue','expiry','status','approvedBy','approvedDate','files','keywords','notes','ocr','filePath','signature','tracking'],...docsData],'Documents');
-  
-  // Process other sheets normally (they're typically smaller)
-  addSheet(wb,[['id','docNum','version','oldTitle','oldData','user','date'],...DB.versions.map(v=>[v.id,v.docNum,v.version,v.oldTitle,v.oldData,v.user,v.date])],'Versions');
-  addSheet(wb,[['id','user','operation','docNum','details','datetime'],...DB.audit.map(a=>[a.id,a.user,a.operation,a.docNum,a.details,a.datetime])],'Audit_Log');
-  addSheet(wb,[['doc','deletedBy','deletedAt'],...DB.trash.map(t=>[JSON.stringify(t.doc),t.deletedBy,t.deletedAt])],'Trash');
-  addSheet(wb,[['id','name','parentId'],...DB.categories.map(c=>[c.id,c.name,c.parentId||''])],'Categories');
-  addSheet(wb,[['type','id','name','data'],...DB.structure.departments.map(d=>['dept',d.id,d.name,JSON.stringify(d.sections||[])]),...DB.structure.projects.map(p=>['project','',p,'']),...DB.structure.branches.map(b=>['branch','',b,''])],'Structure');
-  addSheet(wb,[['key','value'],...Object.entries(DB.settings)],'Settings');
-  
+
+  addSheet(wb, bh_sanitizeSheetRows(['id','docNum','version','oldTitle','oldData','user','date'], DB.versions.map(v => [v.id, v.docNum, v.version, v.oldTitle, v.oldData, v.user, v.date])), 'Versions');
+  addSheet(wb, bh_sanitizeSheetRows(['id','user','operation','docNum','details','datetime'], DB.audit.map(a => [a.id, a.user, a.operation, a.docNum, a.details, a.datetime])), 'Audit_Log');
+  addSheet(wb, bh_sanitizeSheetRows(['doc','deletedBy','deletedAt'], DB.trash.map(t => [JSON.stringify(t.doc), t.deletedBy, t.deletedAt])), 'Trash');
+  addSheet(wb, bh_sanitizeSheetRows(['id','name','parentId'], DB.categories.map(c => [c.id, c.name, c.parentId || ''])), 'Categories');
+  addSheet(wb, bh_sanitizeSheetRows(['type','id','name','data'], [...DB.structure.departments.map(d => ['dept', d.id, d.name, JSON.stringify(d.sections || [])]), ...DB.structure.projects.map(p => ['project', '', p, '']), ...DB.structure.branches.map(b => ['branch', '', b, ''])]), 'Structure');
+  addSheet(wb, bh_sanitizeSheetRows(['key','value'], Object.entries(DB.settings).map(([key, value]) => [key, value])), 'Settings');
+
   return wb;
 }
 
 function bh_writeWorkbookChunked(wb, filename) {
   try {
-    const writeOptions = { 
-      type: 'array', 
-      bookType: 'xlsx',
-      cellStyles: true
-    };
-    const buf = XLSX.write(wb, writeOptions);
+    const writeOptions = { type: 'array', bookType: 'xlsx', cellStyles: true };
+    XLSX.write(wb, writeOptions);
     XLSX.writeFile(wb, filename);
     return true;
   } catch (e) {
-    console.error('Chunked write failed, falling back to standard:', e);
+    console.error('Workbook write failed:', e);
     try {
       XLSX.writeFile(wb, filename);
       return true;
     } catch (e2) {
-      console.error('Standard write also failed:', e2);
+      console.error('Workbook write failed again:', e2);
       return false;
     }
+  }
+}
+
+async function bh_triggerFullExport() {
+  if (bh_exportBusy) {
+    toast('⏳ جاري تنفيذ تصدير سابق — يرجى الانتظار', 'warning', 4000);
+    return;
+  }
+  bh_exportBusy = true;
+  try {
+    bh_showExportProgress('جارٍ تجهيز ملف Excel', 0, 'التحضير...');
+    const wb = await bh_buildWorkbookChunkedAsync({
+      onProgress: (p) => bh_showExportProgress(p.title, p.percent, p.detail)
+    });
+    const ts = new Date();
+    const fn = `Brandzo_Full_${ts.getFullYear()}${String(ts.getMonth()+1).padStart(2,'0')}${String(ts.getDate()).padStart(2,'0')}_${String(ts.getHours()).padStart(2,'0')}${String(ts.getMinutes()).padStart(2,'0')}.xlsx`;
+    const success = bh_writeWorkbookChunked(wb, fn);
+    bh_hideExportProgress();
+    if (success) {
+      bh_docsSinceLastSave = 0;
+      const checkmark = document.getElementById('bh_export_checkmark');
+      if (checkmark) {
+        checkmark.classList.add('show');
+        setTimeout(() => checkmark.classList.remove('show'), 2000);
+      }
+      toast(`✅ تم تصدير ${DB.documents.length} وثيقة بنجاح`, 'success', 6000);
+    } else {
+      toast('❌ فشل التصدير — يرجى مراجعةConsole للمزيد من التفاصيل', 'error', 8000);
+    }
+  } catch (e) {
+    bh_hideExportProgress();
+    console.error('Export failed:', e);
+    toast(`❌ فشل التصدير: ${e.message}`, 'error', 10000);
+  } finally {
+    bh_exportBusy = false;
+  }
+}
+
+async function bh_runStressTestExport() {
+  const originalDocs = DB.documents.slice();
+  const testDocs = [];
+  const longOcrBase = 'OCR '.repeat(20000) + '\n';
+  for (let i = 0; i < 2000; i++) {
+    testDocs.push({
+      id: 'stress-' + i,
+      docNum: `STRESS-${String(i + 1).padStart(4, '0')}`,
+      title: `وثيقة اختبار ${i + 1}`,
+      type: 'اختبار',
+      category: 'stress',
+      dept: 'الاختبار',
+      section: 'التحمل',
+      project: 'Stress',
+      source: 'Auto',
+      client: 'QA',
+      confidential: 'عام',
+      issue: '2026-01-01',
+      expiry: '2030-01-01',
+      status: 'active',
+      approvedBy: 'admin',
+      approvedDate: '2026-01-01',
+      files: `file_${i}.pdf`,
+      keywords: `اختبار,تحمل,${i}`,
+      notes: `ملاحظة ${i}`,
+      ocr: `${longOcrBase}محتوى OCR طويل للغاية للوثيقة ${i}`,
+      filePath: `/${i}/test.pdf`,
+      signature: { name: 'QA', title: 'اختبار' },
+      tracking: [{ user: 'admin', action: 'إضافة', date: new Date().toISOString() }]
+    });
+  }
+
+  DB.documents = testDocs;
+  try {
+    bh_showExportProgress('اختبار التحمل', 0, 'جارٍ توليد 2000 وثيقة تجريبية...');
+    const wb = await bh_buildWorkbookChunkedAsync({ onProgress: (p) => bh_showExportProgress(p.title, p.percent, p.detail) });
+    const filename = `Brandzo_StressTest_${Date.now()}.xlsx`;
+    const success = bh_writeWorkbookChunked(wb, filename);
+    if (!success) throw new Error('فشل كتابة ملف اختبار التحمل');
+
+    const importedRows = XLSX.utils.sheet_to_json(wb.Sheets['Documents']);
+    const roundTrip = [];
+    DB.documents = [];
+    applyWorkbook(wb, () => {
+      roundTrip.push(...DB.documents);
+    });
+
+    const roundTripCount = roundTrip.length;
+    const firstRow = importedRows[0] || {};
+    const ok = importedRows.length === 2000 && roundTripCount === 2000 && String(firstRow.ocr || '').includes('محتوى OCR');
+    toast(ok ? `✅ اختبار التحمل نجح — تم تصدير واستيراد ${roundTripCount} وثيقة` : '⚠️ اختبار التحمل لم يكتمل بشكل كامل', ok ? 'success' : 'warning', 8000);
+    console.log('Stress test export/import result', { exported: importedRows.length, reImported: roundTripCount, ok });
+  } catch (e) {
+    console.error('Stress test failed:', e);
+    toast(`❌ فشل اختبار التحمل: ${e.message}`, 'error', 10000);
+  } finally {
+    DB.documents = originalDocs;
+    bh_hideExportProgress();
   }
 }
 
